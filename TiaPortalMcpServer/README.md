@@ -15,6 +15,7 @@ This server provides tools for:
 - **TIA Portal V20** installed and licensed on the host machine
 - **.NET Framework 4.7.2** (or compatible .NET runtime)
 - The server runs on stdio transport for MCP communication
+- Default network endpoint (if a network transport is enabled): `127.0.0.1:3000` — override with environment variables `MCP_HOST` / `MCP_PORT` or configuration keys `MCP:Host` / `MCP:Port`
 
 ## Installation
 
@@ -29,33 +30,6 @@ This server provides tools for:
    ```
 
 ## Tools Available
-
-### Test Tools
-- `hello_world`: Returns a greeting from TIA MCP Server
-
-### Project Management
-- `create_project(name, path)`: Create a new TIA project
-- `open_project(path)`: Open existing project
-- `save_project(projectId)`: Save current project
-- `close_project(projectId)`: Close project
-
-### Hardware Configuration
-- `add_device(projectId, deviceType, name, orderNumber)`: Add hardware device
-- `list_devices(projectId)`: List devices in project
-- `configure_device(deviceId, parameters)`: Set device parameters
-
-### Software/PLC Tools
-- `add_block(deviceId, blockType, name)`: Add PLC block
-- `list_blocks(deviceId)`: List blocks in device
-- `add_tag(parentId, name, dataType)`: Add variable/tag
-
-### Compilation
-- `compile_project(projectId)`: Compile entire project
-- `compile_software(deviceId)`: Compile PLC software
-
-### Utilities
-- `get_project_info(projectId)`: Get project metadata
-- `list_available_libraries()`: List TIA libraries
 
 ## Usage with MCP Inspector
 
@@ -73,12 +47,17 @@ This will allow you to interactively test all available tools.
 - Full TIA integration requires Windows environment with TIA Portal installed
 - Error handling maps TIA exceptions to MCP error codes
 
+
 ## Architecture
 
 - Uses MCP SDK for stdio-based server
 - Tools auto-discovered via `[McpServerToolType]` attributes
 - Dependency injection with Microsoft.Extensions.Hosting
 - Logging configured to stderr
+- **Project structure is organized by feature and concern:**
+   - `ProjectManagement/`, `HardwareConfiguration/`, `SoftwareDevelopment/`, `UtilityOperations/` for main features
+   - `Models/`, `Services/`, `Controllers/`, `Interfaces/` for separation of concerns
+- **Testing project:** `TiaPortalMcpServer.Tests` contains unit and integration tests
 
 ## Limitations
 
