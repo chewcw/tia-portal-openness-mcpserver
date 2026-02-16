@@ -1,5 +1,0 @@
-version: '3'
-tasks:
-    test:
-        cmds:
-            - npx @modelcontextprotocol/inspector dotnet run --project TiaPortalMcpServer.csproj
