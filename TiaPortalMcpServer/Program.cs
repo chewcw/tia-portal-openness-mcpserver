@@ -20,10 +20,9 @@ namespace TiaPortalMcpServer
             });
             builder.Services
                 .AddMcpServer()
-                .WithStdioServerTransport();
-            builder.Services.AddTiaTools();
+                .WithStdioServerTransport()
+                .WithToolsFromAssembly();
             await builder.Build().RunAsync();
         }
     }
-
 }
