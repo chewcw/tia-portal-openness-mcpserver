@@ -50,6 +50,7 @@ namespace TiaPortalMcpServer
             // Register TIA Portal services
             builder.Services.AddSingleton<TiaPortalService>();
             builder.Services.AddSingleton<TiaPortalSessionManager>();
+            builder.Services.AddSingleton<BlocksAdapter>();
 
             // Register MCP tool classes into DI so their constructors receive injected services
             builder.Services.AddMcpToolTypesFromAssembly();
