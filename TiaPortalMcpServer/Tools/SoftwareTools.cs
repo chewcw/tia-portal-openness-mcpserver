@@ -1,36 +1,435 @@
+using System;
 using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using Newtonsoft.Json;
+using Siemens.Engineering;
+using Siemens.Engineering.SW;
+using Siemens.Engineering.SW.Blocks;
+using TiaPortalMcpServer.Models;
+using TiaPortalMcpServer.Services;
 
 namespace TiaPortalMcpServer
 {
     [McpServerToolType]
-    public static class SoftwareTools
+    public class SoftwareTools
     {
-        [McpServerTool, Description("Add a PLC block")]
-        public static string add_block(
-            [Description("Device ID")] string deviceId,
-            [Description("Block type (e.g., FB, FC)")] string blockType,
-            [Description("Block name")] string name)
+        private readonly ILogger<SoftwareTools> _logger;
+        private readonly TiaPortalSessionManager _sessionManager;
+
+        public SoftwareTools(
+            ILogger<SoftwareTools> logger,
+            TiaPortalSessionManager sessionManager)
         {
-            // TODO: Implement
-            return $"Block '{name}' of type '{blockType}' would be added to device '{deviceId}'";
+            _logger = logger;
+            _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("List blocks in the device")]
-        public static string list_blocks([Description("Device ID")] string deviceId)
+        [McpServerTool, Description("Add a PLC block to a device")]
+        public string add_block(
+            [Description("Device name")] string deviceName,
+            [Description("Block type (FB, FC, DB, OB)")] string blockType,
+            [Description("Block name or number")] string blockName)
         {
-            // TODO: Implement
-            return $"Blocks in device '{deviceId}': [placeholder list]";
+            _logger.LogInformation("add_block called with deviceName='{DeviceName}', blockType='{BlockType}', blockName='{BlockName}'", deviceName, blockType, blockName);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use open_project first."
+                        )
+                    );
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.DeviceNotFound,
+                            $"Device '{deviceName}' not found in project"
+                        )
+                    );
+                }
+
+                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                if (software == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            $"Device '{deviceName}' does not have PLC software"
+                        )
+                    );
+                }
+
+                var blockGroup = software.BlockGroup;
+                if (blockGroup == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "Block group not accessible"
+                        )
+                    );
+                }
+
+                // Check if block already exists
+                var existingBlock = blockGroup.Blocks.FirstOrDefault(b => b.Name == blockName);
+                if (existingBlock != null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.BlockExists,
+                            $"Block '{blockName}' already exists"
+                        )
+                    );
+                }
+
+                // Create the block based on type
+                PlcBlock? newBlock = CreatePlcBlock(blockGroup.Blocks, blockType, blockName);
+                if (newBlock == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.InvalidParameter,
+                            $"Unable to create block type '{blockType}'. Check TIA Portal API support for this block type."
+                        )
+                    );
+                }
+
+                _logger.LogInformation("Block '{BlockName}' of type '{BlockType}' created successfully", blockName, blockType);
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        blockName = newBlock?.Name,
+                        blockType = blockType,
+                        deviceName = deviceName,
+                        message = $"Block '{blockName}' created successfully"
+                    })
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error adding block '{BlockName}'", blockName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error adding block: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding block '{BlockName}'", blockName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error adding block: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
         }
 
-        [McpServerTool, Description("Add a variable/tag")]
-        public static string add_tag(
-            [Description("Block ID or Device ID")] string parentId,
-            [Description("Tag name")] string name,
-            [Description("Data type")] string dataType)
+        [McpServerTool, Description("List all blocks in a device")]
+        public string list_blocks([Description("Device name")] string deviceName)
         {
-            // TODO: Implement
-            return $"Tag '{name}' of type '{dataType}' would be added to '{parentId}'";
+            _logger.LogInformation("list_blocks called with deviceName='{DeviceName}'", deviceName);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use open_project first."
+                        )
+                    );
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.DeviceNotFound,
+                            $"Device '{deviceName}' not found in project"
+                        )
+                    );
+                }
+
+                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                if (software == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            $"Device '{deviceName}' does not have PLC software"
+                        )
+                    );
+                }
+
+                var blocks = software.BlockGroup?.Blocks
+                    .Select(block => new
+                    {
+                        name = block.Name,
+                        type = block.GetType().Name,
+                        programmingLanguage = (block as IEngineeringObject)?.GetAttribute("ProgrammingLanguage")?.ToString()
+                    })
+                    .Cast<object>()
+                    .ToList();
+
+                _logger.LogInformation("Found {Count} blocks in device '{DeviceName}'", blocks?.Count ?? 0, deviceName);
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        deviceName = deviceName,
+                        blockCount = blocks?.Count ?? 0,
+                        blocks = blocks ?? new System.Collections.Generic.List<object>()
+                    })
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error listing blocks for device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error listing blocks: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing blocks for device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error listing blocks: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
+        }
+
+        [McpServerTool, Description("Add a tag/variable to PLC tag table")]
+        public string add_tag(
+            [Description("Device name")] string deviceName,
+            [Description("Tag name")] string tagName,
+            [Description("Data type (e.g., Bool, Int, Real)")] string dataType)
+        {
+            _logger.LogInformation("add_tag called with deviceName='{DeviceName}', tagName='{TagName}', dataType='{DataType}'", deviceName, tagName, dataType);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use open_project first."
+                        )
+                    );
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.DeviceNotFound,
+                            $"Device '{deviceName}' not found in project"
+                        )
+                    );
+                }
+
+                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                if (software == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            $"Device '{deviceName}' does not have PLC software"
+                        )
+                    );
+                }
+
+                var tagTableGroup = software.TagTableGroup;
+                if (tagTableGroup == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "Tag table group not accessible"
+                        )
+                    );
+                }
+
+                // Get or create default tag table
+                var tagTable = tagTableGroup.TagTables.FirstOrDefault();
+                if (tagTable == null)
+                {
+                    tagTable = tagTableGroup.TagTables.Create("DefaultTagTable");
+                }
+
+                // Create the tag via reflection (some API versions require logical address)
+                var newTag = CreateTag(tagTable.Tags, tagName, dataType);
+                if (newTag == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "Unable to create tag with provided parameters"
+                        )
+                    );
+                }
+
+                _logger.LogInformation("Tag '{TagName}' of type '{DataType}' created successfully", tagName, dataType);
+
+                var createdTagName = GetObjectName(newTag) ?? tagName;
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        tagName = createdTagName,
+                        dataType = dataType,
+                        deviceName = deviceName,
+                        tagTable = tagTable.Name,
+                        message = $"Tag '{createdTagName}' created successfully"
+                    })
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error adding tag '{TagName}'", tagName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error adding tag: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding tag '{TagName}'", tagName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error adding tag: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
+        }
+
+        private static PlcBlock? CreatePlcBlock(PlcBlockComposition blockComposition, string blockType, string blockName)
+        {
+            if (blockComposition == null)
+            {
+                return null;
+            }
+
+            var methodName = blockType.ToUpper() switch
+            {
+                "FB" => "CreateFB",
+                "FC" => "CreateFC",
+                "DB" => "CreateDB",
+                "OB" => "CreateOB",
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrEmpty(methodName))
+            {
+                return null;
+            }
+
+            var methods = blockComposition.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == methodName)
+                .ToList();
+
+            foreach (var method in methods)
+            {
+                var parameters = method.GetParameters();
+
+                // Try common overloads by parameter count
+                if (parameters.Length == 1)
+                {
+                    return method.Invoke(blockComposition, new object[] { blockName }) as PlcBlock;
+                }
+
+                if (parameters.Length == 2 && int.TryParse(blockName, out var number))
+                {
+                    return method.Invoke(blockComposition, new object[] { blockName, number }) as PlcBlock;
+                }
+
+                if (parameters.Length >= 3)
+                {
+                    // Try to provide minimal defaults for required parameters
+                    var args = new object?[parameters.Length];
+                    args[0] = blockName;
+                    for (var i = 1; i < parameters.Length; i++)
+                    {
+                        args[i] = parameters[i].ParameterType.IsValueType
+                            ? Activator.CreateInstance(parameters[i].ParameterType)!
+                            : null;
+                    }
+
+                    return method.Invoke(blockComposition, args) as PlcBlock;
+                }
+            }
+
+            return null;
+        }
+
+        private static object? CreateTag(object tagComposition, string tagName, string dataType)
+        {
+            if (tagComposition == null)
+            {
+                return null;
+            }
+
+            var methods = tagComposition.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == "Create")
+                .ToList();
+
+            foreach (var method in methods)
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length == 2)
+                {
+                    return method.Invoke(tagComposition, new object[] { tagName, dataType });
+                }
+
+                if (parameters.Length == 3)
+                {
+                    return method.Invoke(tagComposition, new object[] { tagName, dataType, string.Empty });
+                }
+            }
+
+            return null;
+        }
+
+        private static string? GetObjectName(object instance)
+        {
+            var nameProperty = instance.GetType().GetProperty("Name");
+            return nameProperty?.GetValue(instance)?.ToString();
         }
     }
 }
