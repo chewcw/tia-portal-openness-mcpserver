@@ -32,6 +32,8 @@ namespace TiaPortalMcpServer.Services
 
         public bool IsPortalActive => _tiaPortal != null;
 
+        public TiaPortal? Portal => _tiaPortal ?? null;
+
         public TiaPortal? CurrentPortal => _tiaPortal;
 
         public TiaPortal GetOrCreatePortalInstance()
@@ -103,6 +105,127 @@ namespace TiaPortalMcpServer.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error opening project: {ProjectPath}", projectPath);
+                    throw;
+                }
+            }
+        }
+
+        public Project OpenProjectWithUpgrade(string projectPath)
+        {
+            lock (_lock)
+            {
+                var portal = GetOrCreatePortalInstance();
+
+                if (!File.Exists(projectPath))
+                {
+                    throw new FileNotFoundException($"Project file not found: {projectPath}");
+                }
+
+                _logger.LogInformation("Opening project with upgrade: {ProjectPath}", projectPath);
+
+                try
+                {
+                    var fileInfo = new FileInfo(projectPath);
+                    var project = portal.Projects.OpenWithUpgrade(fileInfo);
+                    _logger.LogInformation("Project opened with upgrade successfully: {ProjectName}", project.Name);
+                    return project;
+                }
+                catch (COMException comEx)
+                {
+                    _logger.LogError(comEx, "COM error opening project with upgrade: {ProjectPath}", projectPath);
+                    throw new InvalidOperationException(
+                        $"Failed to open project with upgrade: {comEx.Message}",
+                        comEx
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error opening project with upgrade: {ProjectPath}", projectPath);
+                    throw;
+                }
+            }
+        }
+
+        public void ArchiveProject(Project project, string targetDirectory, string targetName, Siemens.Engineering.ProjectArchivationMode mode = Siemens.Engineering.ProjectArchivationMode.None)
+        {
+            lock (_lock)
+            {
+                if (project == null)
+                {
+                    throw new ArgumentNullException(nameof(project));
+                }
+
+                if (!Directory.Exists(targetDirectory))
+                {
+                    Directory.CreateDirectory(targetDirectory);
+                }
+
+                _logger.LogInformation("Archiving project '{ProjectName}' to '{TargetDirectory}' with name '{TargetName}'", project.Name, targetDirectory, targetName);
+
+                try
+                {
+                    project.Archive(new DirectoryInfo(targetDirectory), targetName, mode);
+                    _logger.LogInformation("Project archived successfully");
+                }
+                catch (COMException comEx)
+                {
+                    _logger.LogError(comEx, "COM error archiving project");
+                    throw new InvalidOperationException(
+                        $"Failed to archive project: {comEx.Message}",
+                        comEx
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error archiving project");
+                    throw;
+                }
+            }
+        }
+
+        public Project RetrieveProject(string sourcePath, string targetDirectory, bool withUpgrade = false)
+        {
+            lock (_lock)
+            {
+                var portal = GetOrCreatePortalInstance();
+
+                if (!File.Exists(sourcePath))
+                {
+                    throw new FileNotFoundException($"Archive file not found: {sourcePath}");
+                }
+
+                if (!Directory.Exists(targetDirectory))
+                {
+                    Directory.CreateDirectory(targetDirectory);
+                }
+
+                _logger.LogInformation("Retrieving project from '{SourcePath}' to '{TargetDirectory}'", sourcePath, targetDirectory);
+
+                try
+                {
+                    Project project;
+                    if (withUpgrade)
+                    {
+                        project = portal.Projects.RetrieveWithUpgrade(new FileInfo(sourcePath), new DirectoryInfo(targetDirectory));
+                    }
+                    else
+                    {
+                        project = portal.Projects.Retrieve(new FileInfo(sourcePath), new DirectoryInfo(targetDirectory));
+                    }
+                    _logger.LogInformation("Project retrieved successfully: {ProjectName}", project.Name);
+                    return project;
+                }
+                catch (COMException comEx)
+                {
+                    _logger.LogError(comEx, "COM error retrieving project");
+                    throw new InvalidOperationException(
+                        $"Failed to retrieve project: {comEx.Message}",
+                        comEx
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving project");
                     throw;
                 }
             }

@@ -104,6 +104,41 @@ namespace TiaPortalMcpServer.Services
         }
 
         /// <summary>
+        /// Opens a project with upgrade from the specified path
+        /// </summary>
+        public Project OpenProjectWithUpgrade(string projectPath)
+        {
+            lock (_lock)
+            {
+                if (_currentProject != null)
+                {
+                    throw new InvalidOperationException(
+                        $"A project is already open: {_currentProjectPath}. Close it first."
+                    );
+                }
+
+                if (!File.Exists(projectPath))
+                {
+                    throw new FileNotFoundException($"Project file not found: {projectPath}");
+                }
+
+                _logger.LogInformation("Opening project session with upgrade: {ProjectPath}", projectPath);
+
+                var project = _portalService.OpenProjectWithUpgrade(projectPath);
+                _currentProject = project;
+                _currentProjectPath = projectPath;
+
+                _logger.LogInformation(
+                    "Project session opened with upgrade: {ProjectName} at {ProjectPath}",
+                    project.Name,
+                    projectPath
+                );
+
+                return project;
+            }
+        }
+
+        /// <summary>
         /// Saves the currently open project
         /// </summary>
         public void SaveCurrentProject()
@@ -148,8 +183,52 @@ namespace TiaPortalMcpServer.Services
         }
 
         /// <summary>
-        /// Checks if a project is currently open
+        /// Archives the currently open project
         /// </summary>
+        public void ArchiveCurrentProject(string targetDirectory, string targetName, Siemens.Engineering.ProjectArchivationMode mode = Siemens.Engineering.ProjectArchivationMode.None)
+        {
+            lock (_lock)
+            {
+                if (_currentProject == null)
+                {
+                    throw new InvalidOperationException("No project is currently open");
+                }
+
+                _logger.LogInformation("Archiving current project: {ProjectName}", _currentProject.Name);
+                _portalService.ArchiveProject(_currentProject, targetDirectory, targetName, mode);
+                _logger.LogInformation("Project archived successfully");
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a project from archive and opens it
+        /// </summary>
+        public Project RetrieveAndOpenProject(string sourcePath, string targetDirectory, bool withUpgrade = false)
+        {
+            lock (_lock)
+            {
+                if (_currentProject != null)
+                {
+                    throw new InvalidOperationException(
+                        $"A project is already open: {_currentProjectPath}. Close it first."
+                    );
+                }
+
+                _logger.LogInformation("Retrieving and opening project from archive: {SourcePath}", sourcePath);
+
+                var project = _portalService.RetrieveProject(sourcePath, targetDirectory, withUpgrade);
+                _currentProject = project;
+                _currentProjectPath = project.Path.FullName;
+
+                _logger.LogInformation(
+                    "Project retrieved and opened: {ProjectName} at {ProjectPath}",
+                    project.Name,
+                    _currentProjectPath
+                );
+
+                return project;
+            }
+        }
         public bool HasOpenProject()
         {
             lock (_lock)

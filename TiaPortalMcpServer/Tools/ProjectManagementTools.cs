@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
+using Siemens.Engineering;
 using TiaPortalMcpServer.Models;
 using TiaPortalMcpServer.Services;
 
@@ -177,6 +178,82 @@ namespace TiaPortalMcpServer
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error opening project: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
+        }
+
+        [McpServerTool, Description("Open an existing TIA project with upgrade support")]
+        public string open_project_with_upgrade(
+            [Description("Path to the project file (.ap18, .ap17, etc.)")] string projectPath)
+        {
+            _logger.LogInformation("open_project_with_upgrade called with projectPath='{ProjectPath}'", projectPath);
+
+            try
+            {
+                if (!File.Exists(projectPath))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.ProjectNotFound,
+                            $"Project file not found: {projectPath}"
+                        )
+                    );
+                }
+
+                var project = _sessionManager.OpenProjectWithUpgrade(projectPath);
+
+                _logger.LogInformation("Project opened with upgrade successfully: {ProjectName}", project.Name);
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        projectName = project.Name,
+                        projectPath = projectPath,
+                        version = project.Version?.ToString(),
+                        message = $"Project '{project.Name}' opened with upgrade successfully"
+                    })
+                );
+            }
+            catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
+            {
+                _logger.LogWarning("Attempted to open project while one is already open");
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.AlreadyOpen,
+                        opEx.Message
+                    )
+                );
+            }
+            catch (FileNotFoundException fnfEx)
+            {
+                _logger.LogError(fnfEx, "Project file not found: {ProjectPath}", projectPath);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ProjectNotFound,
+                        fnfEx.Message
+                    )
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error opening project with upgrade: {ProjectPath}", projectPath);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error opening project with upgrade: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error opening project with upgrade: {ProjectPath}", projectPath);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error opening project with upgrade: {ex.Message}",
                         ex.ToString()
                     )
                 );
