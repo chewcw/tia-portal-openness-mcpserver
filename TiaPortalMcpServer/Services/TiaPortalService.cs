@@ -100,6 +100,16 @@ namespace TiaPortalMcpServer.Services
             }
         }
 
+        public Project? GetCurrentProject()
+        {
+            if (_tiaPortal != null)
+            {
+                var projects = _tiaPortal.Projects;
+                return projects.FirstOrDefault();
+            }
+            return null;
+        }
+
         public void Dispose()
         {
             if (_disposed)

@@ -227,6 +227,111 @@ namespace TiaPortalMcpServer
             }
         }
 
+        [McpServerTool, Description("Get hierarchical view of block groups and blocks in a device")]
+        public string get_block_hierarchy(
+            [Description("Device name")] string deviceName,
+            [Description("Include blocks in response (default: true)")] bool includeBlocks = true)
+        {
+            _logger.LogInformation("get_block_hierarchy called with deviceName='{DeviceName}', includeBlocks={IncludeBlocks}", deviceName, includeBlocks);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use open_project first."
+                        )
+                    );
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.DeviceNotFound,
+                            $"Device '{deviceName}' not found in project"
+                        )
+                    );
+                }
+
+                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                if (software == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            $"Device '{deviceName}' does not have PLC software"
+                        )
+                    );
+                }
+
+                var blockGroup = software.BlockGroup;
+                if (blockGroup == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "Block group not accessible"
+                        )
+                    );
+                }
+
+                // Get all blocks at root level
+                var rootBlocks = includeBlocks
+                    ? EnumerateBlocks(blockGroup.Blocks)
+                    : new System.Collections.Generic.List<object>();
+
+                // Get all user-defined groups recursively
+                var userGroups = new System.Collections.Generic.List<object>();
+                foreach (PlcBlockUserGroup blockUserGroup in blockGroup.Groups)
+                {
+                    userGroups.Add(EnumerateBlockUserGroup(blockUserGroup, includeBlocks));
+                }
+
+                var totalBlockCount = CountAllBlocks(blockGroup);
+
+                _logger.LogInformation("Found {GroupCount} user groups and {BlockCount} total blocks in device '{DeviceName}'",
+                    userGroups.Count, totalBlockCount, deviceName);
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        deviceName = deviceName,
+                        totalBlockCount = totalBlockCount,
+                        rootBlocks = rootBlocks,
+                        userGroups = userGroups,
+                        message = $"Retrieved block hierarchy with {userGroups.Count} user groups and {totalBlockCount} blocks"
+                    })
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error getting block hierarchy for device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error getting block hierarchy: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting block hierarchy for device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error getting block hierarchy: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
+        }
+
         [McpServerTool, Description("Add a tag/variable to PLC tag table")]
         public string add_tag(
             [Description("Device name")] string deviceName,
@@ -430,6 +535,75 @@ namespace TiaPortalMcpServer
         {
             var nameProperty = instance.GetType().GetProperty("Name");
             return nameProperty?.GetValue(instance)?.ToString();
+        }
+
+        /// <summary>
+        /// Recursively enumerates a block user group and its subgroups
+        /// </summary>
+        private static object EnumerateBlockUserGroup(PlcBlockUserGroup blockUserGroup, bool includeBlocks)
+        {
+            var subGroups = new System.Collections.Generic.List<object>();
+            foreach (PlcBlockUserGroup subBlockUserGroup in blockUserGroup.Groups)
+            {
+                subGroups.Add(EnumerateBlockUserGroup(subBlockUserGroup, includeBlocks));
+            }
+
+            var blocks = includeBlocks
+                ? EnumerateBlocks(blockUserGroup.Blocks)
+                : new System.Collections.Generic.List<object>();
+
+            return new
+            {
+                name = blockUserGroup.Name,
+                blockCount = blockUserGroup.Blocks.Count,
+                subGroupCount = blockUserGroup.Groups.Count,
+                blocks = blocks,
+                subGroups = subGroups
+            };
+        }
+
+        /// <summary>
+        /// Enumerates all blocks in a block composition
+        /// </summary>
+        private static System.Collections.Generic.List<object> EnumerateBlocks(PlcBlockComposition blockComposition)
+        {
+            var blocks = new System.Collections.Generic.List<object>();
+            foreach (PlcBlock block in blockComposition)
+            {
+                blocks.Add(new
+                {
+                    name = block.Name,
+                    type = block.GetType().Name,
+                    programmingLanguage = (block as IEngineeringObject)?.GetAttribute("ProgrammingLanguage")?.ToString()
+                });
+            }
+            return blocks;
+        }
+
+        /// <summary>
+        /// Counts all blocks in a block group including subgroups
+        /// </summary>
+        private static int CountAllBlocks(PlcBlockGroup blockGroup)
+        {
+            var count = blockGroup.Blocks.Count;
+            foreach (PlcBlockUserGroup userGroup in blockGroup.Groups)
+            {
+                count += CountBlocksInUserGroup(userGroup);
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Recursively counts blocks in a user group and its subgroups
+        /// </summary>
+        private static int CountBlocksInUserGroup(PlcBlockUserGroup userGroup)
+        {
+            var count = userGroup.Blocks.Count;
+            foreach (PlcBlockUserGroup subGroup in userGroup.Groups)
+            {
+                count += CountBlocksInUserGroup(subGroup);
+            }
+            return count;
         }
     }
 }

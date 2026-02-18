@@ -22,6 +22,15 @@ namespace TiaPortalMcpServer.Services
             ILogger<TiaPortalSessionManager> logger)
         {
             _portalService = portalService;
+
+            _portalService.GetOrCreatePortalInstance();
+            var currentProject = _portalService.GetCurrentProject();
+            if (currentProject != null)
+            {
+                _currentProject = currentProject;
+                _currentProjectPath = currentProject.Path.ToString();
+            }
+
             _logger = logger;
         }
 
