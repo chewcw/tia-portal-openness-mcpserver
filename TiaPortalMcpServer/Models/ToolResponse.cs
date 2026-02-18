@@ -55,6 +55,7 @@ namespace TiaPortalMcpServer.Models
         public const string ComError = "COM_ERROR";
         public const string InvalidParameter = "INVALID_PARAMETER";
         public const string DeviceNotFound = "DEVICE_NOT_FOUND";
+        public const string DeviceItemNotFound = "DEVICE_ITEM_NOT_FOUND";
         public const string BlockExists = "BLOCK_EXISTS";
         public const string BlockNotFound = "BLOCK_NOT_FOUND";
         public const string CompilationError = "COMPILATION_ERROR";

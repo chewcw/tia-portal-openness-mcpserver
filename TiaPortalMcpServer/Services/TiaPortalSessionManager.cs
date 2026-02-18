@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 
@@ -170,6 +171,39 @@ namespace TiaPortalMcpServer.Services
                     _currentProjectPath
                 );
             }
+        }
+
+        /// <summary>
+        /// Finds a device by path (currently supports device name only)
+        /// </summary>
+        public Siemens.Engineering.HW.Device? FindDevice(string devicePath)
+        {
+            lock (_lock)
+            {
+                if (_currentProject == null)
+                {
+                    return null;
+                }
+
+                // For now, assume devicePath is just the device name
+                // Future: support hierarchical paths like "Group/Device"
+                return _currentProject.Devices.FirstOrDefault(d => d.Name == devicePath);
+            }
+        }
+
+        /// <summary>
+        /// Finds a device item by path (device/item)
+        /// </summary>
+        public Siemens.Engineering.HW.DeviceItem? FindDeviceItem(string devicePath, string itemPath)
+        {
+            var device = FindDevice(devicePath);
+            if (device == null)
+            {
+                return null;
+            }
+
+            // For now, assume itemPath is just the item name
+            return device.DeviceItems.FirstOrDefault(di => di.Name == itemPath);
         }
     }
 }

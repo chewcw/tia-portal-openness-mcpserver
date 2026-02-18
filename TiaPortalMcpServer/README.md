@@ -31,6 +31,37 @@ This server provides tools for:
 
 ## Tools Available
 
+### Project Management
+- `projects_create` - Create a new TIA Portal project
+- `projects_open` - Open an existing project
+- `projects_close` - Close the current project
+- `projects_save` - Save the current project
+
+### Device
+- `devices_list` - List all devices in the project
+- `devices_create` - Add a new device to the project
+- `devices_delete` - Remove a device from the project
+
+### Device Items
+- `deviceitems_list` - List device items in a device
+- `deviceitems_get_attributes` - Get attributes of a device item
+- `deviceitems_plug_new` - Plug a new device item into a device
+- `deviceitems_plug_move` - Move a device item to a new position
+- `deviceitems_copy` - Copy a device item to a new position
+- `deviceitems_delete` - Delete a device item from a device
+
+### Software/PLC Development
+- `blocks_create_db` - Create a new data block
+- `blocks_create_fb` - Create a new function block
+- `blocks_create_fc` - Create a new function
+- `blocks_compile` - Compile blocks
+- `tags_create` - Create PLC tags
+- `tags_list` - List PLC tags
+
+### Utility Operations
+- `projects_info` - Get project information
+- `libraries_list` - List available libraries
+
 ## Usage with MCP Inspector
 
 Test the server using MCP Inspector:
