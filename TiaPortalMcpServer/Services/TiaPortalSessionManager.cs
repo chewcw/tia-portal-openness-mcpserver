@@ -63,6 +63,11 @@ namespace TiaPortalMcpServer.Services
         }
 
         /// <summary>
+        /// Gets the TIA Portal service
+        /// </summary>
+        public TiaPortalService PortalService => _portalService;
+
+        /// <summary>
         /// Opens a project from the specified path
         /// </summary>
         public Project OpenProject(string projectPath)

@@ -1,9 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
+using Siemens.Engineering.HW;
+using Siemens.Engineering.SW;
+using Siemens.Engineering.SW.Blocks;
 
 namespace TiaPortalMcpServer.Services
 {
@@ -16,6 +21,9 @@ namespace TiaPortalMcpServer.Services
         private TiaPortal? _tiaPortal;
         private readonly object _lock = new object();
         private bool _disposed = false;
+
+        // closing parantheses for regex characters ommitted, because they are not relevant for regex detection
+        private readonly char[] _regexChars = ['.', '^', '$', '*', '+', '?', '(', '[', '{', '\\', '|'];
 
         public TiaPortalService(ILogger<TiaPortalService> logger)
         {
@@ -108,6 +116,120 @@ namespace TiaPortalMcpServer.Services
                 return projects.FirstOrDefault();
             }
             return null;
+        }
+
+        public PlcSoftware? GetPlcSoftware(Project project, string softwarePath)
+        {
+            if (project == null)
+            {
+                return null;
+            }
+
+            var softwareContainer = GetSoftwareContainer(project, softwarePath);
+            return softwareContainer;
+        }
+
+        public List<PlcBlock> GetBlocks(Project project, string softwarePath, string regexName = "")
+        {
+            if (project == null)
+            {
+                return new System.Collections.Generic.List<PlcBlock>();
+            }
+
+            var blocks = new System.Collections.Generic.List<PlcBlock>();
+            var plcSoftware = GetSoftwareContainer(project, softwarePath);
+            if (plcSoftware != null)
+            {
+                var blockGroup = plcSoftware.BlockGroup;
+                if (blockGroup != null)
+                {
+                    GetRecursiveBlocks(blockGroup, blocks, regexName);
+                }
+            }
+
+            return blocks;
+        }
+
+        private PlcSoftware? GetSoftwareContainer(Project project, string softwarePath)
+        {
+            // Simplified: assume softwarePath is device name
+            var device = GetDevice(project, softwarePath);
+            if (device != null)
+            {
+                var softwareContainerType = device.GetType().Assembly.GetType("Siemens.Engineering.SW.SoftwareContainer");
+                if (softwareContainerType != null)
+                {
+                    foreach (var deviceItem in device.DeviceItems)
+                    {
+                        var getServiceMethod = deviceItem.GetType().GetMethods()
+                            .FirstOrDefault(m => m.Name == "GetService" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0);
+
+                        if (getServiceMethod != null)
+                        {
+                            var generic = getServiceMethod.MakeGenericMethod(softwareContainerType);
+                            var service = generic.Invoke(deviceItem, null);
+                            if (service != null)
+                            {
+                                var softwareProperty = softwareContainerType.GetProperty("Software");
+                                var softwareValue = softwareProperty?.GetValue(service);
+                                if (softwareValue is PlcSoftware plcSoftware)
+                                {
+                                    return plcSoftware;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private Device? GetDevice(Project project, string devicePath)
+        {
+            if (project == null)
+            {
+                return null;
+            }
+
+            // Simplified: assume devicePath is device name
+            return project.Devices.FirstOrDefault(d => d.Name == devicePath);
+        }
+
+        private void GetRecursiveBlocks(PlcBlockGroup blockGroup, List<PlcBlock> blocks, string regexName)
+        {
+            foreach (PlcBlock block in blockGroup.Blocks)
+            {
+                if (string.IsNullOrEmpty(regexName) ||
+                    (regexName.IndexOfAny(_regexChars) >= 0 && Regex.IsMatch(block.Name, regexName, RegexOptions.IgnoreCase)) ||
+                    block.Name.Contains(regexName, StringComparison.OrdinalIgnoreCase))
+                {
+                    blocks.Add(block);
+                }
+            }
+
+            foreach (PlcBlockUserGroup userGroup in blockGroup.Groups)
+            {
+                GetRecursiveBlocksInUserGroup(userGroup, blocks, regexName);
+            }
+        }
+
+        private void GetRecursiveBlocksInUserGroup(PlcBlockUserGroup userGroup, List<PlcBlock> blocks, string regexName)
+        {
+            foreach (PlcBlock block in userGroup.Blocks)
+            {
+                if (string.IsNullOrEmpty(regexName) ||
+                    (regexName.IndexOfAny(_regexChars) >= 0 && Regex.IsMatch(block.Name, regexName, RegexOptions.IgnoreCase)) ||
+                    block.Name.Contains(regexName, StringComparison.OrdinalIgnoreCase))
+                {
+                    blocks.Add(block);
+                }
+            }
+
+            foreach (PlcBlockUserGroup subGroup in userGroup.Groups)
+            {
+                GetRecursiveBlocksInUserGroup(subGroup, blocks, regexName);
+            }
         }
 
         public void Dispose()

@@ -60,9 +60,10 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
                 if (software == null)
                 {
+                    _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.TiaError,
@@ -171,18 +172,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
-                if (software == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.TiaError,
-                            $"Device '{deviceName}' does not have PLC software"
-                        )
-                    );
-                }
-
-                var blocks = software.BlockGroup?.Blocks
+                var blocks = _sessionManager.PortalService.GetBlocks(project, deviceName)
                     .Select(block => new
                     {
                         name = block.Name,
@@ -258,9 +248,10 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
                 if (software == null)
                 {
+                    _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.TiaError,
@@ -364,9 +355,10 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
                 if (software == null)
                 {
+                    _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.TiaError,
