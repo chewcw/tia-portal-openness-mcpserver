@@ -60,5 +60,6 @@ namespace TiaPortalMcpServer.Models
         public const string CompilationError = "COMPILATION_ERROR";
         public const string AlreadyOpen = "ALREADY_OPEN";
         public const string NotOpen = "NOT_OPEN";
+        public const string NotImplemented = "NOT_IMPLEMENTED";
     }
 }
