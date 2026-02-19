@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,8 @@ using ModelContextProtocol.Server;
 using TiaPortalMcpServer.Services;
 using TiaPortalMcpServer.Extensions;
 using Siemens.Collaboration.Net;
+using Serilog;
+using Serilog.Events;
 
 namespace TiaPortalMcpServer
 {
@@ -39,32 +42,46 @@ namespace TiaPortalMcpServer
 
         static async Task RunStdioHost(string[] args)
         {
-            var builder = Host.CreateApplicationBuilder(args);
-            builder.Logging.AddConsole(consoleLogOptions =>
+            try
             {
-                // Configure all logs to go to stderr to avoid corrupting MCP protocol on stdout
-                consoleLogOptions.LogToStandardErrorThreshold = LogLevel.Trace;
-            });
-            builder.Logging.SetMinimumLevel(LogLevel.Trace);
+                var builder = Host.CreateApplicationBuilder(args);
 
-            // Register TIA Portal services
-            builder.Services.AddSingleton<TiaPortalService>();
-            builder.Services.AddSingleton<TiaPortalSessionManager>();
-            builder.Services.AddSingleton<BlocksAdapter>();
+                // Configure Serilog from appsettings.json and write to stderr
+                Log.Logger = new LoggerConfiguration()
+                    .ReadFrom.Configuration(builder.Configuration)
+                    .CreateLogger();
 
-            // Register MCP tool classes into DI so their constructors receive injected services
-            builder.Services.AddMcpToolTypesFromAssembly();
+                // Use Serilog for all logging
+                builder.Services.AddSerilog();
 
-            // Configure MCP server and register discovered tools/prompts
-            builder.Services
-                .AddMcpServer()
-                .WithStdioServerTransport()
-                .WithToolsFromAssembly()
-                .WithPromptsFromAssembly();
+                // Register TIA Portal services
+                builder.Services.AddSingleton<TiaPortalService>();
+                builder.Services.AddSingleton<TiaPortalSessionManager>();
+                builder.Services.AddSingleton<BlocksAdapter>();
 
-            var host = builder.Build();
+                // Register MCP tool classes into DI so their constructors receive injected services
+                builder.Services.AddMcpToolTypesFromAssembly();
 
-            await host.RunAsync();
+                // Configure MCP server and register discovered tools/prompts
+                builder.Services
+                    .AddMcpServer()
+                    .WithStdioServerTransport()
+                    .WithToolsFromAssembly()
+                    .WithPromptsFromAssembly();
+
+                var host = builder.Build();
+
+                await host.RunAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Host terminated unexpectedly");
+                throw;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }

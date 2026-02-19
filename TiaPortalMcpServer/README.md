@@ -73,7 +73,9 @@ This will allow you to interactively test all available tools.
 
 ## Development Notes
 
-- Built with .NET 9.0 and ModelContextProtocol SDK
+- Built with .NET Framework 4.8 and ModelContextProtocol SDK
+- Logging provided by Serilog (configured via appsettings.json)
+- All logs written to stderr to maintain MCP protocol integrity on stdout
 - TIA Openness assemblies are referenced but implementation is placeholder
 - Full TIA integration requires Windows environment with TIA Portal installed
 - Error handling maps TIA exceptions to MCP error codes
@@ -84,7 +86,7 @@ This will allow you to interactively test all available tools.
 - Uses MCP SDK for stdio-based server
 - Tools auto-discovered via `[McpServerToolType]` attributes
 - Dependency injection with Microsoft.Extensions.Hosting
-- Logging configured to stderr
+- **Logging:** Serilog configured to write to stderr (required for MCP protocol compatibility)
 - **Project structure is organized by feature and concern:**
    - `ProjectManagement/`, `HardwareConfiguration/`, `SoftwareDevelopment/`, `UtilityOperations/` for main features
    - `Models/`, `Services/`, `Controllers/`, `Interfaces/` for separation of concerns

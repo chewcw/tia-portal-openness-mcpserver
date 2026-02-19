@@ -1,0 +1,3 @@
+# Serilog log files
+logs/
+*.log

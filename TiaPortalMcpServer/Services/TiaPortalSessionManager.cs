@@ -32,6 +32,15 @@ namespace TiaPortalMcpServer.Services
                 _currentProjectPath = currentProject.Path.ToString();
             }
 
+            var hardwareCatalogs = _portalService?.Portal?.HardwareCatalog.Find("ES");
+            if (hardwareCatalogs != null)
+            {
+                foreach (var hardwareCatalog in hardwareCatalogs)
+                {
+                    logger.LogInformation("Found hardware catalog entry: {ArticleNumber}", hardwareCatalog.ArticleNumber);
+                }
+            }
+
             _logger = logger;
         }
 

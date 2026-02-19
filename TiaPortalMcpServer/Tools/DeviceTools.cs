@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Siemens.Engineering;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
+using Siemens.Engineering.HW.HardwareCatalog;
 using TiaPortalMcpServer.Models;
 using TiaPortalMcpServer.Services;
 
@@ -552,31 +553,31 @@ namespace TiaPortalMcpServer
 
             try
             {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
-                        )
-                    );
-                }
+                var results = SearchHardwareCatalog(searchTerm);
 
-                var results = SearchHardwareCatalog(project, searchTerm);
-                var limitedResults = results.Take(maxResults).Select(item => new
+                // return JsonConvert.SerializeObject(
+                    // ToolResponse<object>.CreateSuccess(new
+                    // {
+                        // articleNumbers = results.Select(x => x).ToList(),
+                    // })
+                // );
+
+                var resultsNotNull = results.Where(item => item != null);
+                var limitedResults = resultsNotNull.Take(maxResults).Select(item => new
                 {
-                    name = item.Name,
-                    orderNumber = "Not available", // Placeholder
-                    category = "Not available", // Placeholder
-                    family = "Not available" // Placeholder
+                    articleNumber = item.ArticleNumber,
+                    catalogPath = item.CatalogPath,
+                    description = item.Description,
+                    typeIdentifier = item.TypeIdentifier,
+                    typeName = item.TypeName,
+                    version = item.Version,
                 }).ToList();
 
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         searchTerm = searchTerm,
-                        totalResults = results.Count,
+                        totalResults = resultsNotNull.Count(),
                         returnedResults = limitedResults.Count,
                         maxResults = maxResults,
                         deviceItems = limitedResults
@@ -705,7 +706,7 @@ namespace TiaPortalMcpServer
                     // }
                     // else
                     // {
-                        throw new InvalidOperationException($"Device does not support attribute setting for '{attributeName}'");
+                    throw new InvalidOperationException($"Device does not support attribute setting for '{attributeName}'");
                     // }
                 }
 
@@ -785,22 +786,24 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Searches the hardware catalog for device items
         /// </summary>
-        private List<DeviceItem> SearchHardwareCatalog(Project project, string searchTerm)
+        internal List<CatalogEntry> SearchHardwareCatalog(string searchTerm)
         {
-            if (project == null)
-                throw new ArgumentNullException(nameof(project));
-
             _logger.LogInformation("Searching hardware catalog for '{SearchTerm}'", searchTerm);
 
             try
             {
-                // Placeholder: Hardware catalog search requires TIA Portal API integration
-                // In a full implementation, this would search through catalog folders
-                // var catalog = project.GetCatalog();
-                // SearchCatalogRecursive(catalog.Folders, results, searchTerm);
+                var portal = _sessionManager.PortalService.Portal;
+                if (portal == null)
+                {
+                    throw new InvalidOperationException("TIA Portal instance not available");
+                }
 
-                _logger.LogWarning("Hardware catalog search not fully implemented. Returning empty results.");
-                return new List<DeviceItem>();
+                IList<CatalogEntry>? hardwareCatalogs = portal.HardwareCatalog.Find(searchTerm);
+                if (hardwareCatalogs != null)
+                {
+                    return hardwareCatalogs.Where(hardwareCatalog => hardwareCatalog != null).ToList();
+                }
+                return new List<CatalogEntry>();
             }
             catch (COMException comEx)
             {
