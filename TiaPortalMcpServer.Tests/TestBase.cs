@@ -53,6 +53,7 @@ namespace TiaPortalMcpServer.Tests
             builder.Services.AddSingleton<TiaPortalService>();
             builder.Services.AddSingleton<TiaPortalSessionManager>();
             builder.Services.AddSingleton<BlocksAdapter>();
+            builder.Services.AddSingleton<HmiTargetAdapter>();
 
             // Register tool types
             builder.Services.AddMcpToolTypesFromAssembly();
