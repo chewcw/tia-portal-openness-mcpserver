@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.HW;
@@ -33,11 +34,9 @@ namespace TiaPortalMcpServer.Services
 
         public bool IsPortalActive => _tiaPortal != null;
 
-        public TiaPortal? Portal => _tiaPortal ?? null;
-
         public TiaPortal? CurrentPortal => _tiaPortal;
 
-        public TiaPortal GetOrCreatePortalInstance()
+        public TiaPortal? GetOrCreatePortalInstance()
         {
             lock (_lock)
             {
@@ -47,9 +46,11 @@ namespace TiaPortalMcpServer.Services
                     try
                     {
                         var processes = TiaPortal.GetProcesses();
+                        TiaPortalProcess firstProcess;
                         if (processes.Any())
                         {
-                            _tiaPortal = processes.First().Attach();
+                            firstProcess = processes.First();
+                            _tiaPortal = firstProcess.Attach();
                         }
                         else
                         {
@@ -70,7 +71,6 @@ namespace TiaPortalMcpServer.Services
                         throw;
                     }
                 }
-
                 return _tiaPortal;
             }
         }
@@ -267,10 +267,10 @@ namespace TiaPortalMcpServer.Services
         {
             if (project == null)
             {
-                return new System.Collections.Generic.List<PlcBlock>();
+                return new List<PlcBlock>();
             }
 
-            var blocks = new System.Collections.Generic.List<PlcBlock>();
+            var blocks = new List<PlcBlock>();
             var device = GetDevice(project, softwarePath);
             if (device != null)
             {
