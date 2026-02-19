@@ -76,7 +76,7 @@ namespace TiaPortalMcpServer.Tests
         public void GetSessionInfo_ReturnsInfo()
         {
             // Act
-            var result = _projectTools.get_session_info();
+            var result = _projectTools.projects_get_session_info();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

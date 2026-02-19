@@ -25,7 +25,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _utilityTools.get_project_info();
+            var result = _utilityTools.utilities_get_project_info();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -37,7 +37,7 @@ namespace TiaPortalMcpServer.Tests
         public void ListLibraries_ReturnsSuccess()
         {
             // Act
-            var result = _utilityTools.list_available_libraries();
+            var result = _utilityTools.utilities_list_libraries();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

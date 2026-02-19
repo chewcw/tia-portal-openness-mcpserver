@@ -30,12 +30,12 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Add a PLC block to a device")]
-        public string add_block(
+        public string software_add_block(
             [Description("Device name")] string deviceName,
             [Description("Block type (FB, FC, DB, OB)")] string blockType,
             [Description("Block name or number")] string blockName)
         {
-            _logger.LogInformation("add_block called with deviceName='{DeviceName}', blockType='{BlockType}', blockName='{BlockName}'", deviceName, blockType, blockName);
+            _logger.LogInformation("software_add_block called with deviceName='{DeviceName}', blockType='{BlockType}', blockName='{BlockName}'", deviceName, blockType, blockName);
 
             try
             {
@@ -145,9 +145,9 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("List all blocks in a device")]
-        public string list_blocks([Description("Device name")] string deviceName)
+        public string blocks_list([Description("Device name")] string deviceName)
         {
-            _logger.LogInformation("list_blocks called with deviceName='{DeviceName}'", deviceName);
+            _logger.LogInformation("blocks_list called with deviceName='{DeviceName}'", deviceName);
 
             try
             {
@@ -224,11 +224,11 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Get hierarchical view of block groups and blocks in a device")]
-        public string get_block_hierarchy(
+        public string software_get_block_hierarchy(
             [Description("Device name")] string deviceName,
             [Description("Include blocks in response (default: true)")] bool includeBlocks = true)
         {
-            _logger.LogInformation("get_block_hierarchy called with deviceName='{DeviceName}', includeBlocks={IncludeBlocks}", deviceName, includeBlocks);
+            _logger.LogInformation("software_get_block_hierarchy called with deviceName='{DeviceName}', includeBlocks={IncludeBlocks}", deviceName, includeBlocks);
 
             try
             {
@@ -330,12 +330,12 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Add a tag/variable to PLC tag table")]
-        public string add_tag(
+        public string software_add_tag(
             [Description("Device name")] string deviceName,
             [Description("Tag name")] string tagName,
             [Description("Data type (e.g., Bool, Int, Real)")] string dataType)
         {
-            _logger.LogInformation("add_tag called with deviceName='{DeviceName}', tagName='{TagName}', dataType='{DataType}'", deviceName, tagName, dataType);
+            _logger.LogInformation("software_add_tag called with deviceName='{DeviceName}', tagName='{TagName}', dataType='{DataType}'", deviceName, tagName, dataType);
 
             try
             {

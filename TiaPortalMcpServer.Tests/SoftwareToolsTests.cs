@@ -25,7 +25,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _softwareTools.add_block("TestDevice", "FC", "TestBlock");
+            var result = _softwareTools.software_add_block("TestDevice", "FC", "TestBlock");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -41,7 +41,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _softwareTools.list_blocks("TestDevice");
+            var result = _softwareTools.blocks_list("TestDevice");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -57,7 +57,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _softwareTools.get_block_hierarchy("TestDevice");
+            var result = _softwareTools.software_get_block_hierarchy("TestDevice");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -73,7 +73,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _softwareTools.add_tag("TestDevice", "TestTag", "Bool");
+            var result = _softwareTools.software_add_tag("TestDevice", "TestTag", "Bool");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

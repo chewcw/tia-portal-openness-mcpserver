@@ -27,9 +27,9 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Get project metadata")]
-        public string get_project_info()
+        public string utilities_get_project_info()
         {
-            _logger.LogInformation("get_project_info called");
+            _logger.LogInformation("utilities_get_project_info called");
 
             try
             {
@@ -82,9 +82,9 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("List available TIA libraries")]
-        public string list_available_libraries()
+        public string utilities_list_libraries()
         {
-            _logger.LogInformation("list_available_libraries called");
+            _logger.LogInformation("utilities_list_libraries called");
 
             try
             {

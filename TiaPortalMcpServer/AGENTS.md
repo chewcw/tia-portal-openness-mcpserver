@@ -53,6 +53,14 @@ Tool Design
 - Define clear schemas with strict input validation and helpful defaults.
 - Use descriptive, stable tool names and concise documentation.
 
+Tool Naming Convention
+- Follow the standardized `[namespace]_[action]` pattern for all tool names.
+- Namespaces represent the primary domain (e.g., `blocks`, `devices`, `software`, `hardware`, `projects`, `utilities`).
+- Actions use consistent verbs: `list` (for enumerations), `get` (for retrieval), `set` (for modification), `create`, `delete`, etc.
+- Examples: `blocks_list`, `devices_create`, `software_add_tag`, `utilities_get_project_info`, `projects_get_session_info`.
+- List operations use the pattern `[namespace]_list` (not `list_[namespace]`) for consistency with other action verbs.
+- This convention ensures discoverability by LLMs and clarity for external clients.
+
 Security
 - Enforce least privilege for file and project access.
 - Validate all file paths and restrict to allowed roots.

@@ -369,9 +369,9 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Get information about the current session")]
-        public string get_session_info()
+        public string projects_get_session_info()
         {
-            _logger.LogInformation("get_session_info called");
+            _logger.LogInformation("projects_get_session_info called");
 
             try
             {
