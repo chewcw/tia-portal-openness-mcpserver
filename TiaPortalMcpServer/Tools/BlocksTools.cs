@@ -59,7 +59,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<string?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<string?>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -144,7 +144,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -226,7 +226,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<ProDiagAttributes>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<ProDiagAttributes>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -270,7 +270,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -324,7 +324,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -363,7 +363,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -422,7 +422,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -470,7 +470,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -515,7 +515,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -563,7 +563,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -605,7 +605,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<IList<PlcSystemTypeGroup>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<IList<PlcSystemTypeGroup>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -642,7 +642,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -685,7 +685,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -728,7 +728,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<IList<Fingerprint>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<IList<Fingerprint>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -778,7 +778,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<bool>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -876,7 +876,7 @@ namespace TiaPortalMcpServer
         //             return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
         //         }
 
-        //         var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+        //         var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
         //         if (plcSoftware == null)
         //         {
         //             return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
@@ -933,7 +933,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
-                var plcSoftware = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
                     return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));

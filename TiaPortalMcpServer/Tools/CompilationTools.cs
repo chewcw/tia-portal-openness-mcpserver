@@ -120,7 +120,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = TiaPortalSoftwareHelper.TryGetPlcSoftware(device);
+                var software = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (software == null)
                 {
                     return JsonConvert.SerializeObject(
