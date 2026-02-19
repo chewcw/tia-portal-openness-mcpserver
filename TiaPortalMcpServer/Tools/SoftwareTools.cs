@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
@@ -60,7 +61,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
+                var software = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (software == null)
                 {
                     _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
@@ -177,7 +178,12 @@ namespace TiaPortalMcpServer
                     {
                         name = block.Name,
                         type = block.GetType().Name,
-                        programmingLanguage = (block as IEngineeringObject)?.GetAttribute("ProgrammingLanguage")?.ToString()
+                        programmingLanguage = (block as IEngineeringObject)?.GetAttribute("ProgrammingLanguage")?.ToString(),
+                        autoNumber = block.AutoNumber,
+                        creationDate = block.CreationDate,
+                        modifiedDate = block.ModifiedDate,
+                        codeModifiedDate = block.CodeModifiedDate,
+                        compileDate = block.CompileDate,
                     })
                     .Cast<object>()
                     .ToList();
@@ -189,7 +195,7 @@ namespace TiaPortalMcpServer
                     {
                         deviceName = deviceName,
                         blockCount = blocks?.Count ?? 0,
-                        blocks = blocks ?? new System.Collections.Generic.List<object>()
+                        blocks = blocks ?? new List<object>(),
                     })
                 );
             }
@@ -248,7 +254,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
+                var software = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (software == null)
                 {
                     _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
@@ -355,7 +361,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var software = _sessionManager.PortalService.GetPlcSoftware(project, deviceName);
+                var software = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (software == null)
                 {
                     _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);

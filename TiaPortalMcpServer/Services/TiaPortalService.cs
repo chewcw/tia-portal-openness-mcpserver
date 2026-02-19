@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Siemens.Engineering;
 using Siemens.Engineering.HW;
+using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 
@@ -241,15 +242,25 @@ namespace TiaPortalMcpServer.Services
             return null;
         }
 
-        public PlcSoftware? GetPlcSoftware(Project project, string softwarePath)
+        public PlcSoftware? GetPlcSoftware(Device device)
         {
-            if (project == null)
+            if (device == null)
             {
                 return null;
             }
 
-            var softwareContainer = GetSoftwareContainer(project, softwarePath);
-            return softwareContainer;
+            DeviceItemComposition deviceItemComposition = device.DeviceItems;
+            foreach (DeviceItem deviceItem in deviceItemComposition)
+            {
+                SoftwareContainer softwareContainer = deviceItem.GetService<SoftwareContainer>();
+                if (softwareContainer != null)
+                {
+                    Software softwareBase = softwareContainer.Software;
+                    PlcSoftware? plcSoftware = softwareBase as PlcSoftware;
+                    return plcSoftware;
+                }
+            }
+            return null;
         }
 
         public List<PlcBlock> GetBlocks(Project project, string softwarePath, string regexName = "")
@@ -260,52 +271,21 @@ namespace TiaPortalMcpServer.Services
             }
 
             var blocks = new System.Collections.Generic.List<PlcBlock>();
-            var plcSoftware = GetSoftwareContainer(project, softwarePath);
-            if (plcSoftware != null)
-            {
-                var blockGroup = plcSoftware.BlockGroup;
-                if (blockGroup != null)
-                {
-                    GetRecursiveBlocks(blockGroup, blocks, regexName);
-                }
-            }
-
-            return blocks;
-        }
-
-        private PlcSoftware? GetSoftwareContainer(Project project, string softwarePath)
-        {
-            // Simplified: assume softwarePath is device name
             var device = GetDevice(project, softwarePath);
             if (device != null)
             {
-                var softwareContainerType = device.GetType().Assembly.GetType("Siemens.Engineering.SW.SoftwareContainer");
-                if (softwareContainerType != null)
+                var plcSoftware = GetPlcSoftware(device);
+                if (plcSoftware != null)
                 {
-                    foreach (var deviceItem in device.DeviceItems)
+                    var blockGroup = plcSoftware.BlockGroup;
+                    if (blockGroup != null)
                     {
-                        var getServiceMethod = deviceItem.GetType().GetMethods()
-                            .FirstOrDefault(m => m.Name == "GetService" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0);
-
-                        if (getServiceMethod != null)
-                        {
-                            var generic = getServiceMethod.MakeGenericMethod(softwareContainerType);
-                            var service = generic.Invoke(deviceItem, null);
-                            if (service != null)
-                            {
-                                var softwareProperty = softwareContainerType.GetProperty("Software");
-                                var softwareValue = softwareProperty?.GetValue(service);
-                                if (softwareValue is PlcSoftware plcSoftware)
-                                {
-                                    return plcSoftware;
-                                }
-                            }
-                        }
+                        GetRecursiveBlocks(blockGroup, blocks, regexName);
                     }
                 }
             }
 
-            return null;
+            return blocks;
         }
 
         private Device? GetDevice(Project project, string devicePath)
