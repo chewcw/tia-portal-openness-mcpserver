@@ -157,7 +157,7 @@ namespace TiaPortalMcpServer.Services
             try
             {
                 // Get the external source system group from PlcSoftware
-                var systemGroup = plcSoftware.GetType().GetProperty("ExternalSourceSystemGroup")?.GetValue(plcSoftware) as PlcExternalSourceSystemGroup;
+                var systemGroup = plcSoftware.ExternalSourceGroup;
                 if (systemGroup == null)
                 {
                     return ToolResponse<string>.CreateError(ErrorCodes.TiaError, "External source system group not available");
@@ -170,6 +170,52 @@ namespace TiaPortalMcpServer.Services
             {
                 _logger.LogError(ex, "Failed to generate source");
                 return ToolResponse<string>.CreateError(ErrorCodes.TiaError, "Failed to generate source", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Generate source from blocks or types and return the generated text
+        /// </summary>
+        public ToolResponse<string> GenerateSourceText(PlcSoftware plcSoftware, IEnumerable<IGenerateSource> sources, string? fileExtension, GenerateOptions options)
+        {
+            var extension = string.IsNullOrWhiteSpace(fileExtension) ? ".scl" : fileExtension.Trim();
+            if (!extension.StartsWith(".", StringComparison.Ordinal))
+            {
+                extension = "." + extension;
+            }
+
+            var tempFilePath = Path.Combine(Path.GetTempPath(), $"tia-source-{Guid.NewGuid():N}{extension}");
+            var tempFile = new FileInfo(tempFilePath);
+
+            try
+            {
+                var generateResult = GenerateSource(plcSoftware, sources, tempFile, options);
+                if (!generateResult.Success)
+                {
+                    return ToolResponse<string>.CreateError(generateResult.ErrorCode ?? ErrorCodes.TiaError, generateResult.Error ?? "Failed to generate source", generateResult.Details);
+                }
+
+                var content = File.ReadAllText(tempFile.FullName);
+                return ToolResponse<string>.CreateSuccess(content);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate source text");
+                return ToolResponse<string>.CreateError(ErrorCodes.TiaError, "Failed to generate source text", ex.Message);
+            }
+            finally
+            {
+                try
+                {
+                    if (tempFile.Exists)
+                    {
+                        tempFile.Delete();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete temporary source file {Path}", tempFile.FullName);
+                }
             }
         }
 

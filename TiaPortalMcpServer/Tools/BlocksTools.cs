@@ -402,6 +402,54 @@ namespace TiaPortalMcpServer
             }
         }
 
+        [McpServerTool, Description("Generate source text from a PLC block")]
+        public string blocks_source_generate_from_block(
+            [Description("Device name")] string deviceName,
+            [Description("Block name")] string blockName,
+            [Description("Generate options: 'None' or 'WithDependencies'")] string options = "WithDependencies")
+        {
+            _logger.LogInformation("blocks_source_generate_from_block called with deviceName='{DeviceName}', blockName='{BlockName}', options='{Options}'", deviceName, blockName, options);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                }
+
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
+                if (plcSoftware == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                }
+
+                var block = plcSoftware.BlockGroup.Blocks.Find(blockName);
+                if (block == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.BlockNotFound, $"Block '{blockName}' not found"));
+                }
+
+                var generateOptions = options == "WithDependencies" ? GenerateOptions.WithDependencies : GenerateOptions.None;
+                var extension = GetSourceExtension(block.ProgrammingLanguage);
+                var sources = new List<IGenerateSource> { block };
+
+                var result = _blocksAdapter.GenerateSourceText(plcSoftware, sources, extension, generateOptions);
+                return JsonConvert.SerializeObject(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in blocks_source_generate_from_block");
+                return JsonConvert.SerializeObject(ToolResponse<string>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+            }
+        }
+
         [McpServerTool, Description("Generate blocks from all external sources")]
         public string blocks_external_source_generate_all(
             [Description("Device name")] string deviceName)
@@ -965,6 +1013,20 @@ namespace TiaPortalMcpServer
         #endregion
 
         #region Helper Methods
+
+        private static string GetSourceExtension(ProgrammingLanguage language)
+        {
+            var languageName = language.ToString();
+            return languageName switch
+            {
+                "SCL" => ".scl",
+                "STL" => ".awl",
+                "LAD" => ".lad",
+                "FBD" => ".fbd",
+                "GRAPH" => ".s7g",
+                _ => ".scl"
+            };
+        }
 
         private Member? FindMemberByPath(MemberComposition members, string path)
         {

@@ -65,6 +65,20 @@ namespace TiaPortalMcpServer.Tests
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
 
-        // Add more tests as needed for other methods
+        [Fact]
+        public void GenerateSourceFromBlock_NoProject_ReturnsError()
+        {
+            // Arrange
+            var sessionManager = ServiceProvider.GetRequiredService<TiaPortalSessionManager>();
+            sessionManager.CloseCurrentProject();
+
+            // Act
+            var result = _blocksTools.blocks_source_generate_from_block("TestDevice", "TestBlock");
+
+            // Assert
+            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            Assert.False(response.Success);
+            Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
+        }
     }
 }
