@@ -329,119 +329,10 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Add a tag/variable to PLC tag table")]
-        public string software_add_tag(
-            [Description("Device name")] string deviceName,
-            [Description("Tag name")] string tagName,
-            [Description("Data type (e.g., Bool, Int, Real)")] string dataType)
-        {
-            _logger.LogInformation("software_add_tag called with deviceName='{DeviceName}', tagName='{TagName}', dataType='{DataType}'", deviceName, tagName, dataType);
-
-            try
-            {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
-                        )
-                    );
-                }
-
-                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
-                if (device == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.DeviceNotFound,
-                            $"Device '{deviceName}' not found in project"
-                        )
-                    );
-                }
-
-                var software = _sessionManager.PortalService.GetPlcSoftware(device);
-                if (software == null)
-                {
-                    _logger.LogWarning("Failed to get PLC software for device '{DeviceName}'", deviceName);
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.TiaError,
-                            $"Device '{deviceName}' does not have PLC software"
-                        )
-                    );
-                }
-
-                var tagTableGroup = software.TagTableGroup;
-                if (tagTableGroup == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.TiaError,
-                            "Tag table group not accessible"
-                        )
-                    );
-                }
-
-                // Get or create default tag table
-                var tagTable = tagTableGroup.TagTables.FirstOrDefault();
-                if (tagTable == null)
-                {
-                    tagTable = tagTableGroup.TagTables.Create("DefaultTagTable");
-                }
-
-                // Create the tag via reflection (some API versions require logical address)
-                var newTag = CreateTag(tagTable.Tags, tagName, dataType);
-                if (newTag == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.TiaError,
-                            "Unable to create tag with provided parameters"
-                        )
-                    );
-                }
-
-                _logger.LogInformation("Tag '{TagName}' of type '{DataType}' created successfully", tagName, dataType);
-
-                var createdTagName = GetObjectName(newTag) ?? tagName;
-
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateSuccess(new
-                    {
-                        tagName = createdTagName,
-                        dataType = dataType,
-                        deviceName = deviceName,
-                        tagTable = tagTable.Name,
-                        message = $"Tag '{createdTagName}' created successfully"
-                    })
-                );
-            }
-            catch (COMException comEx)
-            {
-                _logger.LogError(comEx, "COM error adding tag '{TagName}'", tagName);
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.ComError,
-                        $"COM error adding tag: {comEx.Message}",
-                        comEx.ToString()
-                    )
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding tag '{TagName}'", tagName);
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.TiaError,
-                        $"Error adding tag: {ex.Message}",
-                        ex.ToString()
-                    )
-                );
-            }
-        }
-
+        /// <summary>
+        /// Creates a PLC block with the specified type and name using reflection.
+        /// This approach is necessary due to varying TIA Portal API signatures across versions.
+        /// </summary>
         private static PlcBlock? CreatePlcBlock(PlcBlockComposition blockComposition, string blockType, string blockName)
         {
             if (blockComposition == null)
@@ -470,69 +361,65 @@ namespace TiaPortalMcpServer
             foreach (var method in methods)
             {
                 var parameters = method.GetParameters();
-
-                // Try common overloads by parameter count
-                if (parameters.Length == 1)
+                try
                 {
-                    return method.Invoke(blockComposition, new object[] { blockName }) as PlcBlock;
-                }
-
-                if (parameters.Length == 2 && int.TryParse(blockName, out var number))
-                {
-                    return method.Invoke(blockComposition, new object[] { blockName, number }) as PlcBlock;
-                }
-
-                if (parameters.Length >= 3)
-                {
-                    // Try to provide minimal defaults for required parameters
-                    var args = new object?[parameters.Length];
-                    args[0] = blockName;
-                    for (var i = 1; i < parameters.Length; i++)
+                    // Try different parameter combinations that were working before
+                    if (parameters.Length == 1)
                     {
-                        args[i] = parameters[i].ParameterType.IsValueType
-                            ? Activator.CreateInstance(parameters[i].ParameterType)!
-                            : null;
+                        // Simple case: CreateX(name)
+                        return method.Invoke(blockComposition, new object[] { blockName }) as PlcBlock;
                     }
 
-                    return method.Invoke(blockComposition, args) as PlcBlock;
+                    if (parameters.Length == 2 && int.TryParse(blockName, out var number))
+                    {
+                        // CreateX(name, number)
+                        return method.Invoke(blockComposition, new object[] { blockName, number }) as PlcBlock;
+                    }
+
+                    if (parameters.Length >= 3)
+                    {
+                        // Try to provide minimal defaults for required parameters
+                        var args = new object?[parameters.Length];
+                        args[0] = blockName;
+
+                        // Fill in default values for other parameters
+                        for (var i = 1; i < parameters.Length; i++)
+                        {
+                            var paramType = parameters[i].ParameterType;
+                            if (paramType == typeof(bool))
+                            {
+                                args[i] = false; // isAutoNumbered = false
+                            }
+                            else if (paramType == typeof(int))
+                            {
+                                args[i] = 0; // number = 0 or default
+                            }
+                            else if (paramType.IsEnum)
+                            {
+                                // For enums like ProgrammingLanguage, use first/default value
+                                args[i] = Enum.GetValues(paramType).GetValue(0);
+                            }
+                            else if (paramType.IsValueType)
+                            {
+                                args[i] = Activator.CreateInstance(paramType);
+                            }
+                            else
+                            {
+                                args[i] = null;
+                            }
+                        }
+
+                        return method.Invoke(blockComposition, args) as PlcBlock;
+                    }
+                }
+                catch (Exception)
+                {
+                    // If this method signature fails, try the next one
+                    continue;
                 }
             }
 
             return null;
-        }
-
-        private static object? CreateTag(object tagComposition, string tagName, string dataType)
-        {
-            if (tagComposition == null)
-            {
-                return null;
-            }
-
-            var methods = tagComposition.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "Create")
-                .ToList();
-
-            foreach (var method in methods)
-            {
-                var parameters = method.GetParameters();
-                if (parameters.Length == 2)
-                {
-                    return method.Invoke(tagComposition, new object[] { tagName, dataType });
-                }
-
-                if (parameters.Length == 3)
-                {
-                    return method.Invoke(tagComposition, new object[] { tagName, dataType, string.Empty });
-                }
-            }
-
-            return null;
-        }
-
-        private static string? GetObjectName(object instance)
-        {
-            var nameProperty = instance.GetType().GetProperty("Name");
-            return nameProperty?.GetValue(instance)?.ToString();
         }
 
         /// <summary>

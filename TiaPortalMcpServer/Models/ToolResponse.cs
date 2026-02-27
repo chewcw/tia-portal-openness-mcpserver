@@ -62,5 +62,10 @@ namespace TiaPortalMcpServer.Models
         public const string AlreadyOpen = "ALREADY_OPEN";
         public const string NotOpen = "NOT_OPEN";
         public const string NotImplemented = "NOT_IMPLEMENTED";
+        public const string TagTableNotFound = "TAG_TABLE_NOT_FOUND";
+        public const string TagGroupNotFound = "TAG_GROUP_NOT_FOUND";
+        public const string TagNotFound = "TAG_NOT_FOUND";
+        public const string TagTableIsDefault = "TAG_TABLE_IS_DEFAULT";
+        public const string InvalidTagName = "INVALID_TAG_NAME";
     }
 }
