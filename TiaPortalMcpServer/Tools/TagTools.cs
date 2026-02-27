@@ -1179,6 +1179,67 @@ namespace TiaPortalMcpServer
             }
         }
 
+        [McpServerTool, Description("Create a new PLC tag in a tag table")]
+        public string tags_create(
+            [Description("Device name")] string deviceName,
+            [Description("Tag table name")] string tagTableName,
+            [Description("Tag name")] string tagName,
+            [Description("Data type (e.g., Bool, Int, Real)")] string dataType,
+            [Description("Logical address (e.g., %I0.0, %Q0.0, %M0.0)")] string logicalAddress = "",
+            [Description("Optional group name (empty for system group)")] string groupName = "",
+            [Description("Optional comment")] string comment = ""
+        )
+        {
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+
+                var plcSoftware = GetPlcSoftware(deviceName);
+                if (plcSoftware == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+
+                PlcTagTable? table = null;
+                if (string.IsNullOrEmpty(groupName))
+                    table = plcSoftware.TagTableGroup.TagTables.Find(tagTableName);
+                else
+                {
+                    var group = plcSoftware.TagTableGroup.Groups.Find(groupName);
+                    if (group == null)
+                        return JsonConvert.SerializeObject(
+                            ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagGroupNotFound, $"Group '{groupName}' not found"));
+                    table = group.TagTables.Find(tagTableName);
+                }
+
+                if (table == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagTableNotFound, $"Tag table '{tagTableName}' not found"));
+
+                var newTag = table.Tags.Create(tagName, dataType, logicalAddress);
+
+                var result = new TagOperationResult
+                {
+                    Name = newTag.Name,
+                    Operation = "create",
+                    EntityType = "tag",
+                    Details = $"Created in tag table '{tagTableName}' with logical address '{logicalAddress}'",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                _logger.LogInformation("Tag '{TagName}' created successfully in table '{TagTableName}' with logical address '{LogicalAddress}'", tagName, tagTableName);
+                return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating tag");
+                return JsonConvert.SerializeObject(
+                    ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
+            }
+        }
+
         #endregion
     }
 }
