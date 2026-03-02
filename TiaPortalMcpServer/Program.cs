@@ -26,6 +26,10 @@ namespace TiaPortalMcpServer
                 {
                     await RunStdioHost(args);
                 }
+                else
+                {
+                    Console.Error.WriteLine("Current user does not have permissions to run this application. Please run as a user in the 'TIA Portal Openness Users' group.");
+                }
             }
             catch (Exception ex)
             {
