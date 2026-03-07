@@ -64,6 +64,9 @@ namespace TiaPortalMcpServer
                 builder.Services.AddSingleton<BlocksAdapter>();
                 builder.Services.AddSingleton<HmiTargetAdapter>();
 
+                // Register file handling services
+                builder.Services.AddSingleton<Services.FileAdapter>();
+
                 // Register MCP tool classes into DI so their constructors receive injected services
                 builder.Services.AddMcpToolTypesFromAssembly();
 
