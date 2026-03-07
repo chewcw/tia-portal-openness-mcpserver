@@ -44,7 +44,7 @@ namespace TiaPortalMcpServer
         /// Lists all HMI targets in the current project.
         /// </summary>
         /// <returns>JSON string containing the list of HMI targets with metadata</returns>
-        [McpServerTool, Description("List all HMI targets in the current project")]
+        [McpServerTool, Description("Enumerate all HMI targets (HMI panels, comfort panels, WinCC systems) in the current project. Returns list of HMI targets with device names, HMI types, target names, and order numbers. Prerequisites: Project must be open. Use this to discover HMI devices before HMI-specific operations like screen management or tag browsing. Filters devices to include only those with HMI software.")]
         public string hmi_targets_list()
         {
             _logger.LogInformation("hmi_targets_list called");
@@ -57,7 +57,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -133,7 +133,7 @@ namespace TiaPortalMcpServer
         /// </summary>
         /// <param name="deviceName">Name of the device to query</param>
         /// <returns>JSON string containing HMI target details if found</returns>
-        [McpServerTool, Description("Get HMI target information for a specific device")]
+        [McpServerTool, Description("Retrieve detailed HMI configuration for a specific device including HMI type, targetname, and software properties. Returns HMI target metadata. Prerequisites: Project must be open, device must exist. Returns found=false if device is not an HMI target. Use this to inspect HMI configuration details before screen or tag operations, or to verify HMI device type.")]
         public string hmi_targets_get(
             [Description("Name of the device to query")] string deviceName)
         {
@@ -147,7 +147,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -226,7 +226,7 @@ namespace TiaPortalMcpServer
         /// </summary>
         /// <param name="deviceName">Name of the device to validate</param>
         /// <returns>JSON string containing validation result</returns>
-        [McpServerTool, Description("Validate if a device has a valid HMI target")]
+        [McpServerTool, Description("Validate whether a device is configured as an HMI target (panel/WinCC system) versus a PLC-only device. Returns boolean isValid and validation message. Prerequisites: Project must be open, device must exist. Use this before calling HMI-specific tools to avoid errors on non-HMI devices. Essential for conditional workflows that handle both PLC and HMI devices differently.")]
         public string hmi_targets_validate(
             [Description("Name of the device to validate")] string deviceName)
         {
@@ -240,7 +240,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }

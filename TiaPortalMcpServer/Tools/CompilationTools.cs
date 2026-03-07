@@ -28,10 +28,10 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Compile the entire project")]
-        public string compile_project()
+        [McpServerTool, Description("Compile the entire TIA Portal project including all devices, PLCs, and HMI targets. Returns compilation state (success/error/warning). Prerequisites: Project must be open. Use this to validate the entire project and identify compilation errors across all project components. Note: Compilation can be time-consuming for large projects.")]
+        public string compilation_project()
         {
-            _logger.LogInformation("compile_project called");
+            _logger.LogInformation("compilation_project called");
 
             try
             {
@@ -41,7 +41,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -91,10 +91,10 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Compile PLC software for a specific device")]
-        public string compile_software([Description("Device name")] string deviceName)
+        [McpServerTool, Description("Compile PLC software for a specific device. Returns compilation state and identifies device-specific errors. Prerequisites: Project must be open, device must have PLC software. Use this for targeted compilation when working on a single device's logic. Faster than full project compilation for iterative development.")]
+        public string compilation_software([Description("Device name")] string deviceName)
         {
-            _logger.LogInformation("compile_software called with deviceName='{DeviceName}'", deviceName);
+            _logger.LogInformation("compilation_software called with deviceName='{DeviceName}'", deviceName);
 
             try
             {
@@ -104,7 +104,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }

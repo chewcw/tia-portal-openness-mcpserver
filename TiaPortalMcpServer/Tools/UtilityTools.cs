@@ -26,7 +26,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Get project metadata")]
+        [McpServerTool, Description("Retrieve comprehensive project metadata including project name, file path, TIA Portal version, device count, and device list. Returns project information object. Prerequisites: Project must be open. Use this for project inventory, version tracking, documentation generation, or as initial context gathering before other operations. Essential for understanding project scope.")]
         public string utilities_get_project_info()
         {
             _logger.LogInformation("utilities_get_project_info called");
@@ -39,7 +39,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -81,7 +81,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("List available TIA libraries")]
+        [McpServerTool, Description("Enumerate available TIA Portal libraries (.zal files) accessible to the current project for importing library objects. Returns library names and count. Prerequisites: Project must be open. Note: Library enumeration support varies by TIA Portal API version; may return empty list if API access unavailable. Use this to discover reusable library components before import operations.")]
         public string utilities_list_libraries()
         {
             _logger.LogInformation("utilities_list_libraries called");
@@ -94,7 +94,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }

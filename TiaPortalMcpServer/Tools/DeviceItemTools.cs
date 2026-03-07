@@ -28,7 +28,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("List all device items in a device")]
+        [McpServerTool, Description("Enumerate all hardware items (CPU modules, I/O modules, communication processors, power supplies) within a specific device. Returns list of device items with names, type identifiers, and position numbers. Prerequisites: Project must be open, device must exist. Use this to inspect device hardware configuration and module layout before item-specific operations.")]
         public string deviceitems_list(
             [Description("Device name")] string deviceName)
         {
@@ -42,7 +42,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -101,7 +101,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Get attributes of a device item")]
+        [McpServerTool, Description("Retrieve configuration attributes for a specific hardware item within a device including name, type identifier, and position number. Returns attribute object. Prerequisites: Project must be open, device and device item must exist. Use this to inspect individual module properties for configuration validation or hardware inventory.")]
         public string deviceitems_get_attributes(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName)
@@ -116,7 +116,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -179,7 +179,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Search the hardware catalog for device items")]
+        [McpServerTool, Description("Search the TIA Portal hardware catalog for hardware modules and components by query string (order numbers, product names, or partial matches). Returns matching catalog entries with order numbers and descriptions. No prerequisites. Status: NOT IMPLEMENTED. Placeholder for future catalog search integration. Use devices_search_catalog as alternative for device-level catalog search.")]
         public string catalog_search_device_items(
             [Description("Search query (e.g., 'CPU', '6ES7', order number)")] string query,
             [Description("Maximum number of results to return")] int maxResults = 10)
@@ -194,7 +194,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -249,7 +249,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -331,7 +331,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -424,7 +424,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -515,7 +515,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }

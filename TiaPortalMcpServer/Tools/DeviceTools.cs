@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("List all devices in the current project")]
+        [McpServerTool, Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
         public string devices_list()
         {
             _logger.LogInformation("devices_list called");
@@ -42,7 +42,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -88,7 +88,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Create a new device in the current project")]
+        [McpServerTool, Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
         public string devices_create(
             [Description("Device name")] string deviceName,
             [Description("Device order number (e.g., '6ES7 515-2AM02-0AB0')")] string orderNumber,
@@ -104,7 +104,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -162,7 +162,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Delete a device from the current project")]
+        [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
         public string devices_delete(
             [Description("Device name")] string deviceName,
             [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun = false)
@@ -177,7 +177,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -241,7 +241,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Get all attributes of a device")]
+        [McpServerTool, Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
         public string devices_get_attributes([Description("Device name")] string deviceName)
         {
             _logger.LogInformation("devices_get_attributes called with deviceName='{DeviceName}'", deviceName);
@@ -254,7 +254,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -305,7 +305,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Set an attribute on a device")]
+        [McpServerTool, Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
         public string devices_set_attribute(
             [Description("Device name")] string deviceName,
             [Description("Attribute name")] string attributeName,
@@ -322,7 +322,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -400,7 +400,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Get the App ID of a device")]
+        [McpServerTool, Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
         public string devices_get_app_id([Description("Device name")] string deviceName)
         {
             _logger.LogInformation("devices_get_app_id called with deviceName='{DeviceName}'", deviceName);
@@ -413,7 +413,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -464,7 +464,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Set the App ID of a device")]
+        [McpServerTool, Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
         public string devices_set_app_id(
             [Description("Device name")] string deviceName,
             [Description("App ID value")] string appId,
@@ -480,7 +480,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -544,7 +544,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Search the hardware catalog for device items")]
+        [McpServerTool, Description("Search the TIA Portal hardware catalog for devices and modules by article number, order number, product name, or partial match. Returns list of matching catalog entries with order numbers, descriptions, type identifiers, and versions. No prerequisites. Use this to discover valid order numbers before devices_create. Essential for finding correct hardware part numbers for device creation.")]
         public string devices_search_catalog(
             [Description("Search term (device name, order number, or partial match)")] string searchTerm,
             [Description("Maximum number of results to return")] int maxResults = 50)

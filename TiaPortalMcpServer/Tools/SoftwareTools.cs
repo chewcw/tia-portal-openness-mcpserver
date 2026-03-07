@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Add a PLC block to a device")]
+        [McpServerTool, Description("Create a new PLC block (FB, FC, DB, OB) in a device's PLC software with specified name or number. Supports Organization Blocks, Function Blocks, Functions, and Data Blocks. Returns block metadata. Prerequisites: Project must be open, device must have PLC software, block name must be unique. Use this for programmatic block creation during project generation or template instantiation.")]
         public string software_add_block(
             [Description("Device name")] string deviceName,
             [Description("Block type (FB, FC, DB, OB)")] string blockType,
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -144,7 +144,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("List all blocks in a device")]
+        [McpServerTool, Description("Enumerate all PLC blocks (OB, FB, FC, DB) in a specific device's software. Returns block list with names, types, programming languages, and modification timestamps. Prerequisites: Project must be open, device must exist. Use this to discover existing blocks before editing, for block inventory, or to verify block structure. Named blocks_list for backward compatibility; consider using software_blocks_list pattern.")]
         public string blocks_list([Description("Device name")] string deviceName)
         {
             _logger.LogInformation("blocks_list called with deviceName='{DeviceName}'", deviceName);
@@ -157,7 +157,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
@@ -223,7 +223,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Get hierarchical view of block groups and blocks in a device")]
+        [McpServerTool, Description("Retrieve hierarchical structure of block groups and blocks within a device's PLC software including user-defined folders and system blocks. Returns nested group structure with optional block details. Prerequisites: Project must be open, device must have PLC software. Set includeBlocks=false for faster group-only enumeration. Use this for project documentation, navigation UIs, or block organization analysis.")]
         public string software_get_block_hierarchy(
             [Description("Device name")] string deviceName,
             [Description("Include blocks in response (default: true)")] bool includeBlocks = true)
@@ -238,7 +238,7 @@ namespace TiaPortalMcpServer
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
-                            "No project is currently open. Use open_project first."
+                            "No project is currently open. Use projects_open first."
                         )
                     );
                 }
