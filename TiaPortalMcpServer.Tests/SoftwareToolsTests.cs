@@ -73,7 +73,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _softwareTools.software_add_tag("TestDevice", "TestTag", "Bool");
+            var result = _softwareTools.software_add_block("TestDevice", "FB", "TestBlock");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

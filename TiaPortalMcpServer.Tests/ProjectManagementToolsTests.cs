@@ -21,7 +21,7 @@ namespace TiaPortalMcpServer.Tests
         public void CreateProject_ValidName_ReturnsSuccess()
         {
             // Act
-            var result = _projectTools.create_project("TestProject", "C:\\Temp");
+            var result = _projectTools.projects_create("TestProject", "C:\\Temp");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -33,7 +33,7 @@ namespace TiaPortalMcpServer.Tests
         {
             // This would require a valid project file path
             // For now, test with invalid path to check error handling
-            var result = _projectTools.open_project("InvalidPath");
+            var result = _projectTools.projects_open("InvalidPath");
 
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
             // Should fail with invalid path
@@ -48,7 +48,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _projectTools.save_project();
+            var result = _projectTools.projects_save();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -64,7 +64,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _projectTools.close_project();
+            var result = _projectTools.projects_close();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

@@ -25,7 +25,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _compilationTools.compile_project();
+            var result = _compilationTools.compilation_project();
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -41,7 +41,7 @@ namespace TiaPortalMcpServer.Tests
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _compilationTools.compile_software("TestDevice");
+            var result = _compilationTools.compilation_software("TestDevice");
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
