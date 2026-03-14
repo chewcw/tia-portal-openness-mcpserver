@@ -196,6 +196,17 @@ namespace TiaPortalMcpServer
                 }
 
                 var result = _blocksAdapter.SetAssignedProDiagFb(member, proDiagFbName, dryRun);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after ProDiag assignment");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after ProDiag assignment");
+                }
+
                 return JsonConvert.SerializeObject(result);
             }
             catch (Exception ex)
@@ -331,6 +342,17 @@ namespace TiaPortalMcpServer
                 }
 
                 var result = _blocksAdapter.AddExternalSource(plcSoftware, name, filePath);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after external source addition");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after external source addition");
+                }
+
                 return JsonConvert.SerializeObject(result);
             }
             catch (Exception ex)
@@ -624,6 +646,17 @@ namespace TiaPortalMcpServer
                 }
 
                 var result = _blocksAdapter.DeleteUdt(udt, dryRun);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after UDT deletion");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after UDT deletion");
+                }
+
                 return JsonConvert.SerializeObject(result);
             }
             catch (Exception ex)
@@ -839,6 +872,17 @@ namespace TiaPortalMcpServer
                 }
 
                 var result = _blocksAdapter.SetObPriority(obBlock, priority, dryRun);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after OB priority set");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after OB priority set");
+                }
+
                 return JsonConvert.SerializeObject(result);
             }
             catch (Exception ex)

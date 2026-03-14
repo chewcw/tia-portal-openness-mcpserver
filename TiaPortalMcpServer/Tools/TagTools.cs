@@ -78,84 +78,18 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Creates a new PLC tag table.
         /// </summary>
-        [McpServerTool, Description("Create a new PLC tag table for organizing global tags with optional parent group placement. Returns tag table operation result with name and creation details. Prerequisites: Projectmust be open, device must exist, tag table name must be unique. Use groupName parameter to create in user-defined groups for hierarchical organization. Essential for structured tag management in large projects.")]
-        public string tags_tagtable_create(
-            [Description("Device name")] string deviceName,
-            [Description("Tag table name")] string tagTableName,
-            [Description("Optional parent group name (empty for system group)")] string groupName = "")
+        [McpServerTool, Description("Create a new PLC tag table for organizing global tags with optional parent group placement. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/tagTableName are missing, prompts for them. Returns tag table operation result with name and creation details. Prerequisites: Project must be open, device must exist, tag table name must be unique. Use groupName parameter to create in user-defined groups for hierarchical organization. Essential for structured tag management in large projects.")]
+        public async Task<string> tags_tagtable_create(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            [Description("Tag table name")] string? tagTableName,
+            [Description("Optional parent group name (empty for system group)")] string groupName = "",
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation(
                 "tags_tagtable_create called with deviceName='{DeviceName}', tagTableName='{TagTableName}', groupName='{GroupName}'",
                 deviceName, tagTableName, groupName);
 
-            try
-            {
-                if (string.IsNullOrWhiteSpace(tagTableName))
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.InvalidTagName, "Tag table name cannot be empty"));
-                }
-
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
-                }
-
-                var plcSoftware = GetPlcSoftware(deviceName);
-                if (plcSoftware == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
-                }
-
-                PlcTagTable? newTable = null;
-                if (string.IsNullOrEmpty(groupName))
-                {
-                    // Create in system group
-                    newTable = plcSoftware.TagTableGroup.TagTables.Create(tagTableName);
-                }
-                else
-                {
-                    // Create in user group
-                    var group = plcSoftware.TagTableGroup.Groups.Find(groupName);
-                    if (group == null)
-                    {
-                        return JsonConvert.SerializeObject(
-                            ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagGroupNotFound, $"Group '{groupName}' not found"));
-                    }
-                    newTable = group.TagTables.Create(tagTableName);
-                }
-
-                var result = new TagOperationResult
-                {
-                    Name = newTable.Name,
-                    Operation = "create",
-                    EntityType = "tagtable",
-                    Details = $"Created in {(string.IsNullOrEmpty(groupName) ? "system group" : $"group '{groupName}'")}",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                _logger.LogInformation("Tag table '{TagTableName}' created successfully", tagTableName);
-                return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in tags_tagtable_create");
-                return JsonConvert.SerializeObject(
-                    ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
-            }
-        }
-
-        [McpServerTool, Description("Interactively create a PLC tag table. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName/tagTableName using MCP Apps/elicitation.")]
-        public async Task<string> tags_tagtable_create_interactive(
-            McpServer server,
-            [Description("Optional device name")] string? deviceName,
-            [Description("Optional tag table name")] string? tagTableName,
-            [Description("Optional parent group name (empty for system group)")] string groupName,
-            CancellationToken cancellationToken)
-        {
             var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
             if (ensureProjectResult != null)
             {
@@ -235,7 +169,73 @@ namespace TiaPortalMcpServer
                 );
             }
 
-            return tags_tagtable_create(deviceName, tagTableName, groupName ?? string.Empty);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(tagTableName))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.InvalidTagName, "Tag table name cannot be empty"));
+                }
+
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                }
+
+                var plcSoftware = GetPlcSoftware(deviceName);
+                if (plcSoftware == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                }
+
+                PlcTagTable? newTable = null;
+                if (string.IsNullOrEmpty(groupName))
+                {
+                    newTable = plcSoftware.TagTableGroup.TagTables.Create(tagTableName);
+                }
+                else
+                {
+                    var group = plcSoftware.TagTableGroup.Groups.Find(groupName);
+                    if (group == null)
+                    {
+                        return JsonConvert.SerializeObject(
+                            ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagGroupNotFound, $"Group '{groupName}' not found"));
+                    }
+                    newTable = group.TagTables.Create(tagTableName);
+                }
+
+                var result = new TagOperationResult
+                {
+                    Name = newTable.Name,
+                    Operation = "create",
+                    EntityType = "tagtable",
+                    Details = $"Created in {(string.IsNullOrEmpty(groupName) ? "system group" : $"group '{groupName}'")}",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                _logger.LogInformation("Tag table '{TagTableName}' created successfully", tagTableName);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after tag table creation");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after tag table creation");
+                }
+
+                return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in tags_tagtable_create");
+                return JsonConvert.SerializeObject(
+                    ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
+            }
         }
 
         /// <summary>
@@ -468,6 +468,17 @@ namespace TiaPortalMcpServer
                 };
 
                 _logger.LogInformation("Tag table '{TagTableName}' deleted successfully", tagTableName);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after tag table deletion");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after tag table deletion");
+                }
+
                 return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
             }
             catch (Exception ex)
@@ -857,6 +868,17 @@ namespace TiaPortalMcpServer
                 };
 
                 _logger.LogInformation("Tag group '{GroupName}' created successfully", groupName);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after tag group creation");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after tag group creation");
+                }
+
                 return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
             }
             catch (Exception ex)
@@ -1017,6 +1039,17 @@ namespace TiaPortalMcpServer
                 };
 
                 _logger.LogInformation("Tag group '{GroupName}' deleted successfully", groupName);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after tag group deletion");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after tag group deletion");
+                }
+
                 return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
             }
             catch (Exception ex)
@@ -1274,78 +1307,17 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Create a new PLC tag in a tag table with specified name, data type, and optional address/properties. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist, tag name must be unique, data type must be valid. Note: Full implementation may require extended parameters for address, retention, external access. Use for programmatic tag creation.")]
-        public string tags_create(
-            [Description("Device name")] string deviceName,
-            [Description("Tag table name")] string tagTableName,
-            [Description("Tag name")] string tagName,
-            [Description("Data type (e.g., Bool, Int, Real)")] string dataType,
+        [McpServerTool, Description("Create a new PLC tag in a tag table with specified name, data type, and optional address/properties. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If required fields are missing, prompts for them. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist, tag name must be unique, data type must be valid. Note: Full implementation may require extended parameters for address, retention, external access. Use for programmatic tag creation.")]
+        public async Task<string> tags_create(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            [Description("Tag table name")] string? tagTableName,
+            [Description("Tag name")] string? tagName,
+            [Description("Data type (e.g., Bool, Int, Real)")] string? dataType,
             [Description("Logical address (e.g., %I0.0, %Q0.0, %M0.0)")] string logicalAddress = "",
             [Description("Optional group name (empty for system group)")] string groupName = "",
-            [Description("Optional comment")] string comment = ""
-        )
-        {
-            try
-            {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
-
-                var plcSoftware = GetPlcSoftware(deviceName);
-                if (plcSoftware == null)
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
-
-                PlcTagTable? table = null;
-                if (string.IsNullOrEmpty(groupName))
-                    table = plcSoftware.TagTableGroup.TagTables.Find(tagTableName);
-                else
-                {
-                    var group = plcSoftware.TagTableGroup.Groups.Find(groupName);
-                    if (group == null)
-                        return JsonConvert.SerializeObject(
-                            ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagGroupNotFound, $"Group '{groupName}' not found"));
-                    table = group.TagTables.Find(tagTableName);
-                }
-
-                if (table == null)
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagTableNotFound, $"Tag table '{tagTableName}' not found"));
-
-                var newTag = table.Tags.Create(tagName, dataType, logicalAddress);
-
-                var result = new TagOperationResult
-                {
-                    Name = newTag.Name,
-                    Operation = "create",
-                    EntityType = "tag",
-                    Details = $"Created in tag table '{tagTableName}' with logical address '{logicalAddress}'",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                _logger.LogInformation("Tag '{TagName}' created successfully in table '{TagTableName}' with logical address '{LogicalAddress}'", tagName, tagTableName);
-                return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating tag");
-                return JsonConvert.SerializeObject(
-                    ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
-            }
-        }
-
-        [McpServerTool, Description("Interactively create a PLC tag. If no project is open, prompts for projectPath and opens it first. Then prompts for missing required fields using MCP Apps/elicitation.")]
-        public async Task<string> tags_create_interactive(
-            McpServer server,
-            [Description("Optional device name")] string? deviceName,
-            [Description("Optional tag table name")] string? tagTableName,
-            [Description("Optional tag name")] string? tagName,
-            [Description("Optional data type")] string? dataType,
-            [Description("Logical address (optional)")] string logicalAddress,
-            [Description("Optional group name (empty for system group)")] string groupName,
-            [Description("Optional comment")] string comment,
-            CancellationToken cancellationToken)
+            [Description("Optional comment")] string comment = "",
+            CancellationToken cancellationToken = default)
         {
             var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
             if (ensureProjectResult != null)
@@ -1356,7 +1328,8 @@ namespace TiaPortalMcpServer
             if (string.IsNullOrWhiteSpace(deviceName) ||
                 string.IsNullOrWhiteSpace(tagTableName) ||
                 string.IsNullOrWhiteSpace(tagName) ||
-                string.IsNullOrWhiteSpace(dataType))
+                string.IsNullOrWhiteSpace(dataType) ||
+                string.IsNullOrWhiteSpace(logicalAddress))
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
@@ -1397,7 +1370,13 @@ namespace TiaPortalMcpServer
                         Description = "Data type (e.g., Bool, Int, Real)"
                     };
                 }
-
+                if (string.IsNullOrWhiteSpace(logicalAddress))
+                {
+                    schema.Properties["logicalAddress"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Logical address (e.g., %I0.0, %Q0.0, %M0.0)"
+                    };
+                }
                 schema.Required = schema.Properties.Keys.ToArray();
 
                 var response = await server.ElicitAsync(new ElicitRequestParams
@@ -1447,22 +1426,89 @@ namespace TiaPortalMcpServer
                 {
                     dataType = dataTypeElement.GetString();
                 }
+
+                if (string.IsNullOrWhiteSpace(logicalAddress) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("logicalAddress", out var logicalAddressElement) &&
+                    logicalAddressElement.ValueKind == JsonValueKind.String)
+                {
+                    logicalAddress = logicalAddressElement.GetString();
+                }
             }
 
             if (string.IsNullOrWhiteSpace(deviceName) ||
                 string.IsNullOrWhiteSpace(tagTableName) ||
                 string.IsNullOrWhiteSpace(tagName) ||
-                string.IsNullOrWhiteSpace(dataType))
+                string.IsNullOrWhiteSpace(dataType) ||
+                string.IsNullOrWhiteSpace(logicalAddress))
             {
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
-                        "deviceName, tagTableName, tagName, and dataType are required."
+                        "deviceName, tagTableName, tagName, dataType, and logicalAddress are required."
                     )
                 );
             }
 
-            return tags_create(deviceName, tagTableName, tagName, dataType, logicalAddress ?? string.Empty, groupName ?? string.Empty, comment ?? string.Empty);
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+
+                var plcSoftware = GetPlcSoftware(deviceName);
+                if (plcSoftware == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+
+                PlcTagTable? table = null;
+                if (string.IsNullOrEmpty(groupName))
+                    table = plcSoftware.TagTableGroup.TagTables.Find(tagTableName);
+                else
+                {
+                    var group = plcSoftware.TagTableGroup.Groups.Find(groupName);
+                    if (group == null)
+                        return JsonConvert.SerializeObject(
+                            ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagGroupNotFound, $"Group '{groupName}' not found"));
+                    table = group.TagTables.Find(tagTableName);
+                }
+
+                if (table == null)
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TagTableNotFound, $"Tag table '{tagTableName}' not found"));
+
+                var newTag = table.Tags.Create(tagName, dataType, logicalAddress);
+
+                var result = new TagOperationResult
+                {
+                    Name = newTag.Name,
+                    Operation = "create",
+                    EntityType = "tag",
+                    Details = $"Created in tag table '{tagTableName}' with logical address '{logicalAddress}'",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                _logger.LogInformation("Tag '{TagName}' created successfully in table '{TagTableName}' with logical address '{LogicalAddress}'", tagName, tagTableName, logicalAddress);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after tag creation");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after tag creation");
+                }
+
+                return JsonConvert.SerializeObject(ToolResponse<TagOperationResult>.CreateSuccess(result));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating tag");
+                return JsonConvert.SerializeObject(
+                    ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
+            }
         }
 
         private async Task<string?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)

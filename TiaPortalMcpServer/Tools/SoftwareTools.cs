@@ -110,6 +110,16 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Block '{BlockName}' of type '{BlockType}' created successfully", blockName, blockType);
 
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after block creation");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after block creation");
+                }
+
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateSuccess(new
                     {

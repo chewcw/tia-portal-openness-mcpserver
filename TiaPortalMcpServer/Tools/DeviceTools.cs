@@ -34,23 +34,22 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
-        public string devices_list()
+        [McpServerTool, Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
+        public async Task<string> devices_list(
+            McpServer server,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_list called");
+
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
 
             try
             {
                 var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use projects_open first."
-                        )
-                    );
-                }
 
                 var devices = project.Devices.Select(device => new
                 {
@@ -93,88 +92,16 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
-        public string devices_create(
-            [Description("Device name")] string deviceName,
-            [Description("Device order number (e.g., '6ES7 515-2AM02-0AB0')")] string orderNumber,
-            [Description("Whether to perform a dry run (true = validate only, false = create device)")] bool dryRun = false)
+        [McpServerTool, Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/orderNumber are missing, prompts for them. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
+        public async Task<string> devices_create(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            [Description("Device order number (e.g., '6ES7 515-2AM02-0AB0')")] string? orderNumber,
+            [Description("Whether to perform a dry run (true = validate only, false = create device)")] bool dryRun = false,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_create called with deviceName='{DeviceName}', orderNumber='{OrderNumber}', dryRun={DryRun}", deviceName, orderNumber, dryRun);
 
-            try
-            {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use projects_open first."
-                        )
-                    );
-                }
-
-                if (dryRun)
-                {
-                    // For dry run, we can't validate order numbers without full catalog implementation
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateSuccess(new
-                        {
-                            deviceName = deviceName,
-                            orderNumber = orderNumber,
-                            message = $"Dry run successful: Device creation validation not fully implemented, but parameters are valid",
-                            dryRun = true
-                        })
-                    );
-                }
-
-                // For now, create a basic device without catalog lookup
-                // In a full implementation, this would search the hardware catalog
-                // var catalog = project.GetCatalog();
-                // var deviceItem = FindDeviceItemInCatalog(catalog, orderNumber);
-                // var device = project.Devices.Create(deviceItem, deviceName);
-
-                // Placeholder: TIA Openness device creation requires specific device items
-                // This is a simplified version for demonstration
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.NotImplemented,
-                        "Device creation requires hardware catalog integration. Use dry-run mode to validate order numbers."
-                    )
-                );
-            }
-            catch (COMException comEx)
-            {
-                _logger.LogError(comEx, "COM error creating device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.ComError,
-                        $"COM error creating device: {comEx.Message}",
-                        comEx.ToString()
-                    )
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.TiaError,
-                        $"Error creating device: {ex.Message}",
-                        ex.ToString()
-                    )
-                );
-            }
-        }
-
-        [McpServerTool, Description("Interactively create a device. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName/orderNumber using MCP Apps/elicitation.")]
-        public async Task<string> devices_create_interactive(
-            McpServer server,
-            [Description("Optional device name")] string? deviceName,
-            [Description("Optional device order number")] string? orderNumber,
-            [Description("Whether to perform a dry run (true = validate only, false = create device)")] bool dryRun,
-            CancellationToken cancellationToken)
-        {
             var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
             if (ensureProjectResult != null)
             {
@@ -254,16 +181,6 @@ namespace TiaPortalMcpServer
                 );
             }
 
-            return devices_create(deviceName, orderNumber, dryRun);
-        }
-
-        [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
-        public string devices_delete(
-            [Description("Device name")] string deviceName,
-            [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun = false)
-        {
-            _logger.LogInformation("devices_delete called with deviceName='{DeviceName}', dryRun={DryRun}", deviceName, dryRun);
-
             try
             {
                 var project = _sessionManager.CurrentProject;
@@ -277,72 +194,59 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
-                if (device == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.DeviceNotFound,
-                            $"Device '{deviceName}' not found in project"
-                        )
-                    );
-                }
-
                 if (dryRun)
                 {
                     return JsonConvert.SerializeObject(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
-                            typeIdentifier = device.TypeIdentifier,
-                            message = $"Dry run successful: Device '{deviceName}' can be deleted",
+                            orderNumber = orderNumber,
+                            message = $"Dry run successful: Device creation validation not fully implemented, but parameters are valid",
                             dryRun = true
                         })
                     );
                 }
 
-                device.Delete();
-                _logger.LogInformation("Device '{DeviceName}' deleted successfully", deviceName);
-
                 return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateSuccess(new
-                    {
-                        deviceName = deviceName,
-                        message = $"Device '{deviceName}' deleted successfully"
-                    })
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.NotImplemented,
+                        "Device creation requires hardware catalog integration. Use dry-run mode to validate order numbers."
+                    )
                 );
             }
             catch (COMException comEx)
             {
-                _logger.LogError(comEx, "COM error deleting device '{DeviceName}'", deviceName);
+                _logger.LogError(comEx, "COM error creating device '{DeviceName}'", deviceName);
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
-                        $"COM error deleting device: {comEx.Message}",
+                        $"COM error creating device: {comEx.Message}",
                         comEx.ToString()
                     )
                 );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting device '{DeviceName}'", deviceName);
+                _logger.LogError(ex, "Error creating device '{DeviceName}'", deviceName);
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
-                        $"Error deleting device: {ex.Message}",
+                        $"Error creating device: {ex.Message}",
                         ex.ToString()
                     )
                 );
             }
         }
 
-        [McpServerTool, Description("Interactively delete a device. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName using MCP Apps/elicitation.")]
-        public async Task<string> devices_delete_interactive(
+        [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
+        public async Task<string> devices_delete(
             McpServer server,
-            [Description("Optional device name")] string? deviceName,
-            [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun,
-            CancellationToken cancellationToken)
+            [Description("Device name")] string? deviceName,
+            [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun = false,
+            CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("devices_delete called with deviceName='{DeviceName}', dryRun={DryRun}", deviceName, dryRun);
+
             var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
             if (ensureProjectResult != null)
             {
@@ -407,7 +311,86 @@ namespace TiaPortalMcpServer
                 );
             }
 
-            return devices_delete(deviceName, dryRun);
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use projects_open first."
+                        )
+                    );
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.DeviceNotFound,
+                            $"Device '{deviceName}' not found in project"
+                        )
+                    );
+                }
+
+                if (dryRun)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateSuccess(new
+                        {
+                            deviceName = deviceName,
+                            typeIdentifier = device.TypeIdentifier,
+                            message = $"Dry run successful: Device '{deviceName}' can be deleted",
+                            dryRun = true
+                        })
+                    );
+                }
+
+                device.Delete();
+                _logger.LogInformation("Device '{DeviceName}' deleted successfully", deviceName);
+
+                try
+                {
+                    _sessionManager.SaveCurrentProject();
+                    _logger.LogInformation("Project saved after device deletion");
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogWarning(saveEx, "Failed to save project after device deletion");
+                }
+
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        deviceName = deviceName,
+                        message = $"Device '{deviceName}' deleted successfully"
+                    })
+                );
+            }
+            catch (COMException comEx)
+            {
+                _logger.LogError(comEx, "COM error deleting device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error deleting device: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting device '{DeviceName}'", deviceName);
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error deleting device: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
         }
 
         private async Task<string?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)
@@ -485,7 +468,10 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                _sessionManager.OpenProject(projectPath);
+                if (projectPath != null)
+                {
+                    _sessionManager.OpenProject(projectPath);
+                }
                 return null;
             }
             catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
@@ -528,10 +514,77 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
-        public string devices_get_attributes([Description("Device name")] string deviceName)
+        [McpServerTool, Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
+        public async Task<string> devices_get_attributes(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_get_attributes called with deviceName='{DeviceName}'", deviceName);
+
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema
+                {
+                    Properties =
+                    {
+                        ["deviceName"] = new ElicitRequestParams.StringSchema
+                        {
+                            Description = "Device name to get attributes from"
+                        }
+                    },
+                    Required = new[] { "deviceName" }
+                };
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Device name is required to get device attributes.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName is required."
+                    )
+                );
+            }
 
             try
             {
@@ -592,14 +645,110 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
-        public string devices_set_attribute(
-            [Description("Device name")] string deviceName,
-            [Description("Attribute name")] string attributeName,
-            [Description("Attribute value")] string attributeValue,
-            [Description("Whether to perform a dry run (true = validate only, false = set attribute)")] bool dryRun = false)
+        [McpServerTool, Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/attributeName/attributeValue are missing, prompts for them. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
+        public async Task<string> devices_set_attribute(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            [Description("Attribute name")] string? attributeName,
+            [Description("Attribute value")] string? attributeValue,
+            [Description("Whether to perform a dry run (true = validate only, false = set attribute)")] bool dryRun = false,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_set_attribute called with deviceName='{DeviceName}', attributeName='{AttributeName}', attributeValue='{AttributeValue}', dryRun={DryRun}", deviceName, attributeName, attributeValue, dryRun);
+
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(attributeName) || string.IsNullOrWhiteSpace(attributeValue))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName/attributeName/attributeValue or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(deviceName))
+                {
+                    schema.Properties["deviceName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device name to modify"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(attributeName))
+                {
+                    schema.Properties["attributeName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Attribute name to set (e.g., Name)"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(attributeValue))
+                {
+                    schema.Properties["attributeValue"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Value to set for the attribute"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required parameters to set device attribute.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(attributeName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("attributeName", out var attributeNameElement) &&
+                    attributeNameElement.ValueKind == JsonValueKind.String)
+                {
+                    attributeName = attributeNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(attributeValue) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("attributeValue", out var attributeValueElement) &&
+                    attributeValueElement.ValueKind == JsonValueKind.String)
+                {
+                    attributeValue = attributeValueElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(attributeName) || string.IsNullOrWhiteSpace(attributeValue))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName, attributeName, and attributeValue are required."
+                    )
+                );
+            }
 
             try
             {
@@ -687,10 +836,77 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
-        public string devices_get_app_id([Description("Device name")] string deviceName)
+        [McpServerTool, Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
+        public async Task<string> devices_get_app_id(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_get_app_id called with deviceName='{DeviceName}'", deviceName);
+
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema
+                {
+                    Properties =
+                    {
+                        ["deviceName"] = new ElicitRequestParams.StringSchema
+                        {
+                            Description = "Device name to get App ID from"
+                        }
+                    },
+                    Required = new[] { "deviceName" }
+                };
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Device name is required to get device App ID.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName is required."
+                    )
+                );
+            }
 
             try
             {
@@ -751,13 +967,94 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
-        public string devices_set_app_id(
-            [Description("Device name")] string deviceName,
-            [Description("App ID value")] string appId,
-            [Description("Whether to perform a dry run (true = validate only, false = set App ID)")] bool dryRun = false)
+        [McpServerTool, Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/appId are missing, prompts for them. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
+        public async Task<string> devices_set_app_id(
+            McpServer server,
+            [Description("Device name")] string? deviceName,
+            [Description("App ID value")] string? appId,
+            [Description("Whether to perform a dry run (true = validate only, false = set App ID)")] bool dryRun = false,
+            CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("devices_set_app_id called with deviceName='{DeviceName}', appId='{AppId}', dryRun={DryRun}", deviceName, appId, dryRun);
+
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(appId))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName/appId or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(deviceName))
+                {
+                    schema.Properties["deviceName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device name to set App ID on"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(appId))
+                {
+                    schema.Properties["appId"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "App ID value to assign"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required parameters to set device App ID.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(appId) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("appId", out var appIdElement) &&
+                    appIdElement.ValueKind == JsonValueKind.String)
+                {
+                    appId = appIdElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(appId))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName and appId are required."
+                    )
+                );
+            }
 
             try
             {
@@ -918,8 +1215,9 @@ namespace TiaPortalMcpServer
                 attributes["HwIdentifiersCount"] = device.HwIdentifiers.Count;
 
                 // Get additional attributes if available
-                try
-                {
+            try
+            {
+                var project = _sessionManager.CurrentProject;
                     // Simplified attribute access - TIA Openness attribute access may vary by version
                     // var attributeProvider = device as IAttributeProvider;
                     // if (attributeProvider != null)
