@@ -69,5 +69,6 @@ namespace TiaPortalMcpServer.Models
         public const string InvalidTagName = "INVALID_TAG_NAME";
         public const string OperationNotSupported = "OPERATION_NOT_SUPPORTED";
         public const string InternalError = "INTERNAL_ERROR";
+        public const string UserCancelled = "USER_CANCELLED";
     }
 }

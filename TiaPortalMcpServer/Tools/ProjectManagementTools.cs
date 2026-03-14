@@ -1,8 +1,13 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -112,7 +117,7 @@ _logger.LogInformation("projects_create called with name='{Name}', path='{Path}'
         [McpServerTool, Description("Open an existing TIA Portal project file for editing. Returns project metadata including name, path, and version. Prerequisites: Project file must exist, no other project currently open. Use this before any device, block, or tag operations. Supports .ap18, .ap17, .ap16 formats.")]
         public string projects_open([Description("Path to the project file (.ap18, .ap17, etc.)")] string projectPath)
         {
-            _logger.LogInformation("projects_open called with projectPath='{ProjectPath}'", projectPath);
+_logger.LogInformation("projects_open called with projectPath='{ProjectPath}'", projectPath);
 
             try
             {
@@ -182,6 +187,156 @@ _logger.LogInformation("projects_create called with name='{Name}', path='{Path}'
                     )
                 );
             }
+        }
+
+        [McpServerTool, Description("Interactively create a new TIA Portal project. If name/path are missing, the server will ask the user via MCP Apps/elicitation.")]
+        public async Task<string> projects_create_interactive(
+            McpServer server,
+            [Description("Optional project name")] string? name,
+            [Description("Optional path to save the project")] string? path,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide name/path or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    schema.Properties["name"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Project name"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    schema.Properties["path"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Directory where the project should be created"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required project details. Please provide the requested fields.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(name) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("name", out var nameElement) &&
+                    nameElement.ValueKind == JsonValueKind.String)
+                {
+                    name = nameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(path) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("path", out var pathElement) &&
+                    pathElement.ValueKind == JsonValueKind.String)
+                {
+                    path = pathElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "name and path are required."
+                    )
+                );
+            }
+
+            return projects_create(name, path);
+        }
+
+        [McpServerTool, Description("Interactively open an existing TIA Portal project. If projectPath is missing, the server will ask the user for it via MCP Apps/elicitation.")]
+        public async Task<string> projects_open_interactive(
+            McpServer server,
+            [Description("Optional path to the project file (.ap18, .ap17, etc.)")] string? projectPath,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(projectPath))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide projectPath or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema
+                {
+                    Properties =
+                    {
+                        ["projectPath"] = new ElicitRequestParams.StringSchema
+                        {
+                            Description = "Full path to the .apXX project file"
+                        }
+                    },
+                    Required = new[] { "projectPath" }
+                };
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Project path is required to open a TIA Portal project. Please provide the full file path.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (response.Content != null &&
+                    response.Content.TryGetValue("projectPath", out var projectPathElement) &&
+                    projectPathElement.ValueKind == JsonValueKind.String)
+                {
+                    projectPath = projectPathElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(projectPath))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.InvalidParameter,
+                            "Project path was not provided."
+                        )
+                    );
+                }
+            }
+
+            return projects_open(projectPath);
         }
 
         [McpServerTool, Description("Open an existing TIA Portal project file and automatically upgrade it to the current TIA Portal version if needed. Use this when opening projects created in older TIA Portal versions. Returns upgraded project metadata. Prerequisites: Project file must exist, no other project currently open. Warning: Upgrade is permanent; backup project first.")]

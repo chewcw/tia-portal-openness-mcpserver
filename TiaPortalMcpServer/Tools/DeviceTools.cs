@@ -1,9 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -162,6 +167,96 @@ namespace TiaPortalMcpServer
             }
         }
 
+        [McpServerTool, Description("Interactively create a device. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName/orderNumber using MCP Apps/elicitation.")]
+        public async Task<string> devices_create_interactive(
+            McpServer server,
+            [Description("Optional device name")] string? deviceName,
+            [Description("Optional device order number")] string? orderNumber,
+            [Description("Whether to perform a dry run (true = validate only, false = create device)")] bool dryRun,
+            CancellationToken cancellationToken)
+        {
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(orderNumber))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName/orderNumber or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(deviceName))
+                {
+                    schema.Properties["deviceName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device name to create"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(orderNumber))
+                {
+                    schema.Properties["orderNumber"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device order number (e.g., 6ES7 515-2AM02-0AB0)"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required device details. Please provide the requested fields.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(orderNumber) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("orderNumber", out var orderNumberElement) &&
+                    orderNumberElement.ValueKind == JsonValueKind.String)
+                {
+                    orderNumber = orderNumberElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(orderNumber))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName and orderNumber are required."
+                    )
+                );
+            }
+
+            return devices_create(deviceName, orderNumber, dryRun);
+        }
+
         [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
         public string devices_delete(
             [Description("Device name")] string deviceName,
@@ -235,6 +330,198 @@ namespace TiaPortalMcpServer
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error deleting device: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
+            }
+        }
+
+        [McpServerTool, Description("Interactively delete a device. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName using MCP Apps/elicitation.")]
+        public async Task<string> devices_delete_interactive(
+            McpServer server,
+            [Description("Optional device name")] string? deviceName,
+            [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun,
+            CancellationToken cancellationToken)
+        {
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema
+                {
+                    Properties =
+                    {
+                        ["deviceName"] = new ElicitRequestParams.StringSchema
+                        {
+                            Description = "Device name to delete"
+                        }
+                    },
+                    Required = new[] { "deviceName" }
+                };
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Device name is required to delete a device.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName is required."
+                    )
+                );
+            }
+
+            return devices_delete(deviceName, dryRun);
+        }
+
+        private async Task<string?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)
+        {
+            if (_sessionManager.CurrentProject != null)
+            {
+                return null;
+            }
+
+            if (server.ClientCapabilities?.Elicitation == null)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.OperationNotSupported,
+                        "Client does not support elicitation. Provide a projectPath or use a client with MCP Apps/elicitation support."
+                    )
+                );
+            }
+
+            var schema = new ElicitRequestParams.RequestSchema
+            {
+                Properties =
+                {
+                    ["projectPath"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Full path to the .apXX project file"
+                    }
+                },
+                Required = new[] { "projectPath" }
+            };
+
+            var response = await server.ElicitAsync(new ElicitRequestParams
+            {
+                Message = "No project is open. Please provide the project file path to open.",
+                RequestedSchema = schema
+            }, cancellationToken);
+
+            if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.UserCancelled,
+                        "User cancelled or declined the request."
+                    )
+                );
+            }
+
+            string? projectPath = null;
+            if (response.Content != null &&
+                response.Content.TryGetValue("projectPath", out var projectPathElement) &&
+                projectPathElement.ValueKind == JsonValueKind.String)
+            {
+                projectPath = projectPathElement.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(projectPath))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "Project path was not provided."
+                    )
+                );
+            }
+
+            try
+            {
+                if (!File.Exists(projectPath))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.ProjectNotFound,
+                            $"Project file not found: {projectPath}"
+                        )
+                    );
+                }
+
+                _sessionManager.OpenProject(projectPath);
+                return null;
+            }
+            catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.AlreadyOpen,
+                        opEx.Message
+                    )
+                );
+            }
+            catch (FileNotFoundException fnfEx)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ProjectNotFound,
+                        fnfEx.Message
+                    )
+                );
+            }
+            catch (COMException comEx)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error opening project: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error opening project: {ex.Message}",
                         ex.ToString()
                     )
                 );

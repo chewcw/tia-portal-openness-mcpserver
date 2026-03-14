@@ -33,14 +33,18 @@ This server provides tools for:
 
 ### Project Management
 - `projects_create` - Create a new TIA Portal project
+- `projects_create_interactive` - Create a project, prompting for name/path if missing
 - `projects_open` - Open an existing project
+- `projects_open_interactive` - Open a project, prompting the user for a path if missing
 - `projects_close` - Close the current project
 - `projects_save` - Save the current project
 
 ### Device
 - `devices_list` - List all devices in the project
 - `devices_create` - Add a new device to the project
+- `devices_create_interactive` - Add a new device, prompting for missing fields
 - `devices_delete` - Remove a device from the project
+- `devices_delete_interactive` - Remove a device, prompting for missing fields
 
 ### Device Items
 - `deviceitems_list` - List device items in a device
@@ -56,11 +60,14 @@ This server provides tools for:
 - `blocks_create_fc` - Create a new function
 - `blocks_compile` - Compile blocks
 - `tags_create` - Create PLC tags
+- `tags_create_interactive` - Create PLC tags, prompting for missing fields
 - `tags_list` - List PLC tags
+- `tags_tagtable_create_interactive` - Create tag tables, prompting for missing fields
 
 ### Utility Operations
 - `projects_info` - Get project information
 - `libraries_list` - List available libraries
+- `utilities_elicit_user_input` - Ask the user for missing information via MCP Apps/elicitation
 
 ## Usage with MCP Inspector
 

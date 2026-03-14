@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -141,6 +146,96 @@ namespace TiaPortalMcpServer
                 return JsonConvert.SerializeObject(
                     ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
             }
+        }
+
+        [McpServerTool, Description("Interactively create a PLC tag table. If no project is open, prompts for projectPath and opens it first. Then prompts for missing deviceName/tagTableName using MCP Apps/elicitation.")]
+        public async Task<string> tags_tagtable_create_interactive(
+            McpServer server,
+            [Description("Optional device name")] string? deviceName,
+            [Description("Optional tag table name")] string? tagTableName,
+            [Description("Optional parent group name (empty for system group)")] string groupName,
+            CancellationToken cancellationToken)
+        {
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(tagTableName))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide deviceName/tagTableName or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(deviceName))
+                {
+                    schema.Properties["deviceName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device name"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(tagTableName))
+                {
+                    schema.Properties["tagTableName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Tag table name"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required tag table details. Please provide the requested fields.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(tagTableName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("tagTableName", out var tagTableNameElement) &&
+                    tagTableNameElement.ValueKind == JsonValueKind.String)
+                {
+                    tagTableName = tagTableNameElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(tagTableName))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName and tagTableName are required."
+                    )
+                );
+            }
+
+            return tags_tagtable_create(deviceName, tagTableName, groupName ?? string.Empty);
         }
 
         /// <summary>
@@ -1237,6 +1332,254 @@ namespace TiaPortalMcpServer
                 _logger.LogError(ex, "Error creating tag");
                 return JsonConvert.SerializeObject(
                     ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.TiaError, ex.Message));
+            }
+        }
+
+        [McpServerTool, Description("Interactively create a PLC tag. If no project is open, prompts for projectPath and opens it first. Then prompts for missing required fields using MCP Apps/elicitation.")]
+        public async Task<string> tags_create_interactive(
+            McpServer server,
+            [Description("Optional device name")] string? deviceName,
+            [Description("Optional tag table name")] string? tagTableName,
+            [Description("Optional tag name")] string? tagName,
+            [Description("Optional data type")] string? dataType,
+            [Description("Logical address (optional)")] string logicalAddress,
+            [Description("Optional group name (empty for system group)")] string groupName,
+            [Description("Optional comment")] string comment,
+            CancellationToken cancellationToken)
+        {
+            var ensureProjectResult = await EnsureProjectOpenAsync(server, cancellationToken);
+            if (ensureProjectResult != null)
+            {
+                return ensureProjectResult;
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) ||
+                string.IsNullOrWhiteSpace(tagTableName) ||
+                string.IsNullOrWhiteSpace(tagName) ||
+                string.IsNullOrWhiteSpace(dataType))
+            {
+                if (server.ClientCapabilities?.Elicitation == null)
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.OperationNotSupported,
+                            "Client does not support elicitation. Provide required fields or use a client with MCP Apps/elicitation support."
+                        )
+                    );
+                }
+
+                var schema = new ElicitRequestParams.RequestSchema();
+                if (string.IsNullOrWhiteSpace(deviceName))
+                {
+                    schema.Properties["deviceName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Device name"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(tagTableName))
+                {
+                    schema.Properties["tagTableName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Tag table name"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(tagName))
+                {
+                    schema.Properties["tagName"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Tag name"
+                    };
+                }
+                if (string.IsNullOrWhiteSpace(dataType))
+                {
+                    schema.Properties["dataType"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Data type (e.g., Bool, Int, Real)"
+                    };
+                }
+
+                schema.Required = schema.Properties.Keys.ToArray();
+
+                var response = await server.ElicitAsync(new ElicitRequestParams
+                {
+                    Message = "Missing required tag details. Please provide the requested fields.",
+                    RequestedSchema = schema
+                }, cancellationToken);
+
+                if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.UserCancelled,
+                            "User cancelled or declined the request."
+                        )
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("deviceName", out var deviceNameElement) &&
+                    deviceNameElement.ValueKind == JsonValueKind.String)
+                {
+                    deviceName = deviceNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(tagTableName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("tagTableName", out var tagTableNameElement) &&
+                    tagTableNameElement.ValueKind == JsonValueKind.String)
+                {
+                    tagTableName = tagTableNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(tagName) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("tagName", out var tagNameElement) &&
+                    tagNameElement.ValueKind == JsonValueKind.String)
+                {
+                    tagName = tagNameElement.GetString();
+                }
+
+                if (string.IsNullOrWhiteSpace(dataType) &&
+                    response.Content != null &&
+                    response.Content.TryGetValue("dataType", out var dataTypeElement) &&
+                    dataTypeElement.ValueKind == JsonValueKind.String)
+                {
+                    dataType = dataTypeElement.GetString();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceName) ||
+                string.IsNullOrWhiteSpace(tagTableName) ||
+                string.IsNullOrWhiteSpace(tagName) ||
+                string.IsNullOrWhiteSpace(dataType))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "deviceName, tagTableName, tagName, and dataType are required."
+                    )
+                );
+            }
+
+            return tags_create(deviceName, tagTableName, tagName, dataType, logicalAddress ?? string.Empty, groupName ?? string.Empty, comment ?? string.Empty);
+        }
+
+        private async Task<string?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)
+        {
+            if (_sessionManager.CurrentProject != null)
+            {
+                return null;
+            }
+
+            if (server.ClientCapabilities?.Elicitation == null)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.OperationNotSupported,
+                        "Client does not support elicitation. Provide a projectPath or use a client with MCP Apps/elicitation support."
+                    )
+                );
+            }
+
+            var schema = new ElicitRequestParams.RequestSchema
+            {
+                Properties =
+                {
+                    ["projectPath"] = new ElicitRequestParams.StringSchema
+                    {
+                        Description = "Full path to the .apXX project file"
+                    }
+                },
+                Required = new[] { "projectPath" }
+            };
+
+            var response = await server.ElicitAsync(new ElicitRequestParams
+            {
+                Message = "No project is open. Please provide the project file path to open.",
+                RequestedSchema = schema
+            }, cancellationToken);
+
+            if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.UserCancelled,
+                        "User cancelled or declined the request."
+                    )
+                );
+            }
+
+            string? projectPath = null;
+            if (response.Content != null &&
+                response.Content.TryGetValue("projectPath", out var projectPathElement) &&
+                projectPathElement.ValueKind == JsonValueKind.String)
+            {
+                projectPath = projectPathElement.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(projectPath))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.InvalidParameter,
+                        "Project path was not provided."
+                    )
+                );
+            }
+
+            try
+            {
+                if (!File.Exists(projectPath))
+                {
+                    return JsonConvert.SerializeObject(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.ProjectNotFound,
+                            $"Project file not found: {projectPath}"
+                        )
+                    );
+                }
+
+                _sessionManager.OpenProject(projectPath);
+                return null;
+            }
+            catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.AlreadyOpen,
+                        opEx.Message
+                    )
+                );
+            }
+            catch (FileNotFoundException fnfEx)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ProjectNotFound,
+                        fnfEx.Message
+                    )
+                );
+            }
+            catch (COMException comEx)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.ComError,
+                        $"COM error opening project: {comEx.Message}",
+                        comEx.ToString()
+                    )
+                );
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(
+                    ToolResponse<object>.CreateError(
+                        ErrorCodes.TiaError,
+                        $"Error opening project: {ex.Message}",
+                        ex.ToString()
+                    )
+                );
             }
         }
 
