@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: windows-latest
+
+    # Required to create GitHub Releases and upload assets
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore tia-portal-openness-mcpserver.sln
+
+      - name: Build (Release)
+        run: dotnet build tia-portal-openness-mcpserver.sln -c Release --no-restore
+
+      - name: Run unit tests (TIA Portal-free only)
+        # FileAdapterTests and ToolsDiTests are the only test classes that do not
+        # require TIA Portal to be installed. All other test classes derive from
+        # TestBase which calls Api.Global.Openness().Initialize() in their
+        # constructor and will fail on a CI runner without TIA Portal installed.
+        run: >
+          dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj
+          -c Release --no-build
+
+      - name: Publish application
+        run: >
+          dotnet publish TiaPortalMcpServer/TiaPortalMcpServer.csproj
+          -c Release -f net48 --no-build
+          --output ./dist
+
+      - name: Package as zip
+        shell: pwsh
+        run: Compress-Archive -Path ./dist/* -DestinationPath ./TiaPortalMcpServer-${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create ${{ github.ref_name }}
+          ./TiaPortalMcpServer-${{ github.ref_name }}.zip
+          --title "Release ${{ github.ref_name }}"
+          --generate-notes
