@@ -1,12 +1,12 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
+using Siemens.Engineering.Compiler;
 using Siemens.Engineering.SW;
 using TiaPortalMcpServer.Models;
 using TiaPortalMcpServer.Services;
@@ -47,7 +47,7 @@ namespace TiaPortalMcpServer
                 }
 
                 _logger.LogInformation("Compiling project '{ProjectName}'", project.Name);
-                var result = TryCompile(project, out var compileState, out var compileMessage);
+                var result = TryCompileProject(project, out var compileState, out var compileMessage);
                 if (!result)
                 {
                     return JsonConvert.SerializeObject(
@@ -132,7 +132,7 @@ namespace TiaPortalMcpServer
                 }
 
                 _logger.LogInformation("Compiling PLC software for device '{DeviceName}'", deviceName);
-                var result = TryCompile(software, out var compileState, out var compileMessage);
+                var result = TryCompileSoftware(software, out var compileState, out var compileMessage);
                 if (!result)
                 {
                     return JsonConvert.SerializeObject(
@@ -176,54 +176,55 @@ namespace TiaPortalMcpServer
             }
         }
 
-        private static bool TryCompile(object engineeringObject, out string? state, out string? message)
+        private static bool TryCompileProject(Project project, out string? state, out string? message)
         {
             state = null;
             message = null;
 
-            if (engineeringObject == null)
+            if (project == null)
             {
-                message = "Engineering object is null";
+                message = "Project is null";
                 return false;
             }
 
-            var assembly = engineeringObject.GetType().Assembly;
-            var compileServiceType = assembly.GetType("Siemens.Engineering.Compiler.CompileService");
-            if (compileServiceType == null)
+            var compileService = project.GetService<ICompilable>();
+            if (compileService == null)
             {
-                message = "Compile service type not found in Siemens.Engineering assembly";
+                message = "Compile service not available for the project";
                 return false;
             }
 
-            var getServiceMethod = engineeringObject.GetType().GetMethods()
-                .FirstOrDefault(m => m.Name == "GetService" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0);
-
-            if (getServiceMethod == null)
-            {
-                message = "GetService method not found on engineering object";
-                return false;
-            }
-
-            var generic = getServiceMethod.MakeGenericMethod(compileServiceType);
-            var service = generic.Invoke(engineeringObject, null);
-            if (service == null)
-            {
-                message = "Compile service not available for the engineering object";
-                return false;
-            }
-
-            var compileMethod = compileServiceType.GetMethod("Compile", BindingFlags.Public | BindingFlags.Instance);
-            if (compileMethod == null)
-            {
-                message = "Compile method not found on compile service";
-                return false;
-            }
-
-            var result = compileMethod.Invoke(service, null);
+            CompilerResult result = compileService.Compile();
             if (result != null)
             {
-                var stateProperty = result.GetType().GetProperty("State");
-                state = stateProperty?.GetValue(result)?.ToString();
+                state = result.State.ToString();
+            }
+
+            return true;
+        }
+
+        private static bool TryCompileSoftware(PlcSoftware software, out string? state, out string? message)
+        {
+            state = null;
+            message = null;
+
+            if (software == null)
+            {
+                message = "Software is null";
+                return false;
+            }
+
+            var compileService = software.GetService<ICompilable>();
+            if (compileService == null)
+            {
+                message = "Compile service not available for the software";
+                return false;
+            }
+
+            CompilerResult result = compileService.Compile();
+            if (result != null)
+            {
+                state = result.State.ToString();
             }
 
             return true;

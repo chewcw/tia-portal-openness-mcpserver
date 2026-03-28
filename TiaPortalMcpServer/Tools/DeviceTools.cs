@@ -400,12 +400,12 @@ namespace TiaPortalMcpServer
                 return null;
             }
 
-            if (server.ClientCapabilities?.Elicitation == null)
+            if (server == null || server.ClientCapabilities?.Elicitation == null)
             {
                 return JsonConvert.SerializeObject(
                     ToolResponse<object>.CreateError(
-                        ErrorCodes.OperationNotSupported,
-                        "Client does not support elicitation. Provide a projectPath or use a client with MCP Apps/elicitation support."
+                        ErrorCodes.NoProject,
+                        "No project is currently open"
                     )
                 );
             }

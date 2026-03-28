@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -12,6 +14,7 @@ namespace TiaPortalMcpServer.Tests
     /// Unit tests for TagTools MCP server tools.
     /// Tests tag table management, tag group operations, and tag enumeration.
     /// </summary>
+    [Trait("Category", "Integration")]
     public class TagToolsTests : TestBase
     {
         private readonly TagTools _tagTools;
@@ -56,14 +59,14 @@ namespace TiaPortalMcpServer.Tests
         /// Test that tags_tagtable_create returns error when no project is open.
         /// </summary>
         [Fact]
-        public void TagsTableCreate_NoProject_ReturnsError()
+        public async Task TagsTableCreate_NoProject_ReturnsError()
         {
             // Arrange
             var sessionManager = ServiceProvider.GetRequiredService<TiaPortalSessionManager>();
             sessionManager.CloseCurrentProject();
 
             // Act
-            var result = _tagTools.tags_tagtable_create("TestDevice", "TestTable");
+            var result = await _tagTools.tags_tagtable_create(null, "TestDevice", "TestTable", cancellationToken: CancellationToken.None);
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);

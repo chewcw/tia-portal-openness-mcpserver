@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -8,6 +10,7 @@ using Xunit;
 
 namespace TiaPortalMcpServer.Tests
 {
+    [Trait("Category", "Integration")]
     public class ProjectManagementToolsTests : TestBase
     {
         private readonly ProjectManagementTools _projectTools;
@@ -18,10 +21,10 @@ namespace TiaPortalMcpServer.Tests
         }
 
         [Fact]
-        public void CreateProject_ValidName_ReturnsSuccess()
+        public async Task CreateProject_ValidName_ReturnsSuccess()
         {
             // Act
-            var result = _projectTools.projects_create("TestProject", "C:\\Temp");
+            var result = await _projectTools.projects_create(null, "TestProject", "C:\\Temp", CancellationToken.None);
 
             // Assert
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
@@ -29,11 +32,11 @@ namespace TiaPortalMcpServer.Tests
         }
 
         [Fact]
-        public void OpenProject_ValidPath_ReturnsSuccess()
+        public async Task OpenProject_ValidPath_ReturnsSuccess()
         {
             // This would require a valid project file path
             // For now, test with invalid path to check error handling
-            var result = _projectTools.projects_open("InvalidPath");
+            var result = await _projectTools.projects_open(null, "InvalidPath", CancellationToken.None);
 
             var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
             // Should fail with invalid path

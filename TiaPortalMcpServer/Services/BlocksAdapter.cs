@@ -123,29 +123,34 @@ namespace TiaPortalMcpServer.Services
         /// <summary>
         /// Add external source file
         /// </summary>
-        public ToolResponse<PlcExternalSource> AddExternalSource(PlcSoftware plcSoftware, string name, string filePath)
+        public ToolResponse<ExternalSourceInfo> AddExternalSource(PlcSoftware plcSoftware, string name, string filePath)
         {
             try
             {
                 var fileInfo = new FileInfo(filePath);
                 if (!fileInfo.Exists)
                 {
-                    return ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.InvalidParameter, "Source file does not exist");
+                    return ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.InvalidParameter, "Source file does not exist");
                 }
 
                 var extension = fileInfo.Extension.ToLowerInvariant();
                 if (!new[] { ".awl", ".scl", ".db", ".udt" }.Contains(extension))
                 {
-                    return ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.InvalidParameter, "Unsupported file extension. Must be .awl, .scl, .db, or .udt");
+                    return ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.InvalidParameter, "Unsupported file extension. Must be .awl, .scl, .db, or .udt");
                 }
 
                 var externalSource = plcSoftware.ExternalSourceGroup.ExternalSources.CreateFromFile(name, filePath);
-                return ToolResponse<PlcExternalSource>.CreateSuccess(externalSource);
+                var info = new ExternalSourceInfo
+                {
+                    Name = externalSource.Name,
+                    Path = filePath
+                };
+                return ToolResponse<ExternalSourceInfo>.CreateSuccess(info);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to add external source {Name} from {Path}", name, filePath);
-                return ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.TiaError, "Failed to add external source", ex.Message);
+                return ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.TiaError, "Failed to add external source", ex.Message);
             }
         }
 
@@ -219,54 +224,72 @@ namespace TiaPortalMcpServer.Services
             }
         }
 
+        private static BlockInfo CreateBlockInfo(IEngineeringObject block)
+        {
+            var plcBlock = block as PlcBlock;
+            return new BlockInfo
+            {
+                Name = block.GetAttribute("Name")?.ToString() ?? string.Empty,
+                Type = block.GetType().Name,
+                ProgrammingLanguage = block.GetAttribute("ProgrammingLanguage")?.ToString(),
+                AutoNumber = plcBlock?.AutoNumber ?? false,
+                CreationDate = plcBlock?.CreationDate,
+                ModifiedDate = plcBlock?.ModifiedDate,
+                CompileDate = plcBlock?.CompileDate
+            };
+        }
+
         /// <summary>
         /// Generate blocks from external source
         /// </summary>
-        public ToolResponse<IList<IEngineeringObject>> GenerateBlocksFromSource(PlcExternalSource externalSource, GenerateBlockOption options)
+        public ToolResponse<IList<BlockInfo>> GenerateBlocksFromSource(PlcExternalSource externalSource, GenerateBlockOption options)
         {
             try
             {
                 var objects = externalSource.GenerateBlocksFromSource(options);
-                return ToolResponse<IList<IEngineeringObject>>.CreateSuccess(objects);
+                var blockInfos = objects.Select(CreateBlockInfo).ToList();
+                return ToolResponse<IList<BlockInfo>>.CreateSuccess(blockInfos);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate blocks from source {Name}", externalSource.Name);
-                return ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Failed to generate blocks from source", ex.Message);
+                return ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Failed to generate blocks from source", ex.Message);
             }
         }
 
         /// <summary>
         /// Generate blocks from external source in specific group
         /// </summary>
-        public ToolResponse<IList<IEngineeringObject>> GenerateBlocksFromSourceInGroup(PlcExternalSource externalSource, PlcBlockUserGroup blockGroup, GenerateBlockOption options)
+        public ToolResponse<IList<BlockInfo>> GenerateBlocksFromSourceInGroup(PlcExternalSource externalSource, PlcBlockUserGroup blockGroup, GenerateBlockOption options)
         {
             try
             {
                 var objects = externalSource.GenerateBlocksFromSource(blockGroup, options);
-                return ToolResponse<IList<IEngineeringObject>>.CreateSuccess(objects);
+                var blockInfos = objects.Select(CreateBlockInfo).ToList();
+                return ToolResponse<IList<BlockInfo>>.CreateSuccess(blockInfos);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate blocks from source {Name} in group {Group}", externalSource.Name, blockGroup.Name);
-                return ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Failed to generate blocks from source in group", ex.Message);
+                return ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Failed to generate blocks from source in group", ex.Message);
             }
         }
 
         /// <summary>
         /// Generate types from external source in specific group
         /// </summary>
-        public ToolResponse<IList<IEngineeringObject>> GenerateTypesFromSourceInGroup(PlcExternalSource externalSource, PlcTypeUserGroup typeGroup, GenerateBlockOption options)
+        public ToolResponse<IList<BlockInfo>> GenerateTypesFromSourceInGroup(PlcExternalSource externalSource, PlcTypeUserGroup typeGroup, GenerateBlockOption options)
         {
             try
             {
                 var objects = externalSource.GenerateBlocksFromSource(typeGroup, options);
-                return ToolResponse<IList<IEngineeringObject>>.CreateSuccess(objects);
+                var blockInfos = objects.Select(CreateBlockInfo).ToList();
+                return ToolResponse<IList<BlockInfo>>.CreateSuccess(blockInfos);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate types from source {Name} in group {Group}", externalSource.Name, typeGroup.Name);
-                return ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Failed to generate types from source in group", ex.Message);
+                return ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Failed to generate types from source in group", ex.Message);
             }
         }
 
@@ -328,6 +351,30 @@ namespace TiaPortalMcpServer.Services
             {
                 _logger.LogError(ex, "Failed to get system types");
                 return ToolResponse<IList<PlcSystemTypeGroup>>.CreateError(ErrorCodes.TiaError, "Failed to get system types", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get user-defined types (UDTs)
+        /// </summary>
+        public ToolResponse<IList<PlcTypeInfo>> GetUserTypes(PlcSoftware plcSoftware)
+        {
+            try
+            {
+                var types = plcSoftware.TypeGroup.Types.ToList();
+                var userTypes = types
+                    .Select(t => new PlcTypeInfo
+                    {
+                        Name = t.Name,
+                        Namespace = t.Namespace
+                    })
+                    .ToList();
+                return ToolResponse<IList<PlcTypeInfo>>.CreateSuccess(userTypes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get user-defined types");
+                return ToolResponse<IList<PlcTypeInfo>>.CreateError(ErrorCodes.TiaError, "Failed to get user-defined types", ex.Message);
             }
         }
 

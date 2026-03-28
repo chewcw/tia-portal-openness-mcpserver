@@ -12,6 +12,7 @@ namespace TiaPortalMcpServer.Tests
     /// Unit tests for HmiTargetTools MCP server tool class.
     /// Tests cover error handling, project validation, and HMI target operations.
     /// </summary>
+    [Trait("Category", "Integration")]
     public class HmiTargetToolsTests : TestBase
     {
         private readonly HmiTargetTools _hmiTargetTools;

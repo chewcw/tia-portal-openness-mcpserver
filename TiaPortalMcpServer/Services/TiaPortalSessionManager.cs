@@ -23,16 +23,23 @@ namespace TiaPortalMcpServer.Services
             ILogger<TiaPortalSessionManager> logger)
         {
             _portalService = portalService;
+            _logger = logger;
 
             _portalService.GetOrCreatePortalInstance();
             var currentProject = _portalService.GetCurrentProject();
             if (currentProject != null)
             {
-                _currentProject = currentProject;
-                _currentProjectPath = currentProject.Path.ToString();
+                try
+                {
+                    _ = currentProject.Name;
+                    _currentProject = currentProject;
+                    _currentProjectPath = currentProject.Path.ToString();
+                }
+                catch (Exception)
+                {
+                    _currentProject = null;
+                }
             }
-
-            _logger = logger;
         }
 
         /// <summary>
@@ -165,7 +172,7 @@ namespace TiaPortalMcpServer.Services
             {
                 if (_currentProject == null)
                 {
-                    throw new InvalidOperationException("No project is currently open");
+                    return;
                 }
 
                 _logger.LogInformation(

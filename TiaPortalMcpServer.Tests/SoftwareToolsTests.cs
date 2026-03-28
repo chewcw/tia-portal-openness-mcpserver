@@ -8,6 +8,7 @@ using Xunit;
 
 namespace TiaPortalMcpServer.Tests
 {
+    [Trait("Category", "Integration")]
     public class SoftwareToolsTests : TestBase
     {
         private readonly SoftwareTools _softwareTools;

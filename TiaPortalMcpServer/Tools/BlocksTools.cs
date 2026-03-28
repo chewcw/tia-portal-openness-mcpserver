@@ -326,19 +326,19 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                    return JsonConvert.SerializeObject(ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
                 }
 
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
                 var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                    return JsonConvert.SerializeObject(ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
                 }
 
                 var result = _blocksAdapter.AddExternalSource(plcSoftware, name, filePath);
@@ -358,7 +358,51 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in blocks_external_source_add");
-                return JsonConvert.SerializeObject(ToolResponse<PlcExternalSource>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+                return JsonConvert.SerializeObject(ToolResponse<ExternalSourceInfo>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+            }
+        }
+
+        [McpServerTool, Description("List all external source files in the PLC project. Returns a list of external source objects with their names and paths. Prerequisites: Project must be open, device must have PLC software. Use to check what external sources are available before generating blocks or deleting.")]
+        public string blocks_external_source_list(
+            [Description("Device name")] string deviceName)
+        {
+            _logger.LogInformation("blocks_external_source_list called with deviceName='{DeviceName}'", deviceName);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<ExternalSourceInfo>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<ExternalSourceInfo>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                }
+
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
+                if (plcSoftware == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<ExternalSourceInfo>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                }
+
+                var results = new List<ExternalSourceInfo>();
+                foreach (var externalSource in plcSoftware.ExternalSourceGroup.ExternalSources)
+                {
+                    results.Add(new ExternalSourceInfo
+                    {
+                        Name = externalSource.Name
+                    });
+                }
+
+                return JsonConvert.SerializeObject(ToolResponse<IList<ExternalSourceInfo>>.CreateSuccess(results));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in blocks_external_source_list");
+                return JsonConvert.SerializeObject(ToolResponse<IList<ExternalSourceInfo>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
             }
         }
 
@@ -483,38 +527,38 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
                 }
 
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
                 var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
                 }
 
-                var results = new List<IEngineeringObject>();
+                var results = new List<BlockInfo>();
                 foreach (var externalSource in plcSoftware.ExternalSourceGroup.ExternalSources)
                 {
                     var result = _blocksAdapter.GenerateBlocksFromSource(externalSource, GenerateBlockOption.None);
                     if (!result.Success)
                     {
-                        return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(result.ErrorCode ?? ErrorCodes.TiaError, result.Error ?? "Failed to generate blocks", result.Details));
+                        return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(result.ErrorCode ?? ErrorCodes.TiaError, result.Error ?? "Failed to generate blocks", result.Details));
                     }
                     results.AddRange(result.Data);
                 }
 
-                return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateSuccess(results));
+                return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateSuccess(results));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in blocks_external_source_generate_all");
-                return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+                return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
             }
         }
 
@@ -531,25 +575,25 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
                 }
 
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
                 var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
                 }
 
                 var externalSource = plcSoftware.ExternalSourceGroup.ExternalSources.Find(sourceName);
                 if (externalSource == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.InvalidParameter, $"External source '{sourceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.InvalidParameter, $"External source '{sourceName}' not found"));
                 }
 
                 var generateOptions = options == "KeepOnError" ? GenerateBlockOption.KeepOnError : GenerateBlockOption.None;
@@ -559,7 +603,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in blocks_external_source_generate_with_options");
-                return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+                return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
             }
         }
 
@@ -699,6 +743,42 @@ namespace TiaPortalMcpServer
             {
                 _logger.LogError(ex, "Unexpected error in blocks_system_types_list");
                 return JsonConvert.SerializeObject(ToolResponse<IList<PlcSystemTypeGroup>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+            }
+        }
+
+        [McpServerTool, Description("Enumerate all user-defined types (UDTs) available in the PLC software. Returns list of UDT names and namespaces. Prerequisites: Project must be open, device must have PLC software. Use this to discover available UDTs for data block creation or tag definitions.")]
+        public string blocks_user_types_list(
+            [Description("Device name")] string deviceName)
+        {
+            _logger.LogInformation("blocks_user_types_list called with deviceName='{DeviceName}'", deviceName);
+
+            try
+            {
+                var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<PlcTypeInfo>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                }
+
+                var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
+                if (device == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<PlcTypeInfo>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                }
+
+                var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
+                if (plcSoftware == null)
+                {
+                    return JsonConvert.SerializeObject(ToolResponse<IList<PlcTypeInfo>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                }
+
+                var result = _blocksAdapter.GetUserTypes(plcSoftware);
+                return JsonConvert.SerializeObject(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in blocks_user_types_list");
+                return JsonConvert.SerializeObject(ToolResponse<IList<PlcTypeInfo>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
             }
         }
 
@@ -1016,31 +1096,31 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
                 }
 
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
                 }
 
                 var plcSoftware = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (plcSoftware == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, $"Device '{deviceName}' does not have PLC software"));
                 }
 
                 var externalSource = plcSoftware.ExternalSourceGroup.ExternalSources.Find(sourceName);
                 if (externalSource == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.InvalidParameter, $"External source '{sourceName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.InvalidParameter, $"External source '{sourceName}' not found"));
                 }
 
                 var blockGroup = plcSoftware.BlockGroup.Groups.Find(groupName);
                 if (blockGroup == null)
                 {
-                    return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.InvalidParameter, $"Block group '{groupName}' not found"));
+                    return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.InvalidParameter, $"Block group '{groupName}' not found"));
                 }
 
                 var generateOptions = options == "KeepOnError" ? GenerateBlockOption.KeepOnError : GenerateBlockOption.None;
@@ -1050,7 +1130,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in blocks_external_source_generate_in_group");
-                return JsonConvert.SerializeObject(ToolResponse<IList<IEngineeringObject>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
+                return JsonConvert.SerializeObject(ToolResponse<IList<BlockInfo>>.CreateError(ErrorCodes.TiaError, "Unexpected error", ex.Message));
             }
         }
 
