@@ -55,19 +55,21 @@ jobs:
             Write-Error "Repository variable TIA_PUBLICAPI_RELEASE_ASSET_NAME is required (for example: PortalV20-PublicAPI-V20.zip)."
           }
 
-          $bundlePath = Join-Path $env:RUNNER_TEMP 'tia-publicapi-v20.zip'
           $extractRoot = Join-Path $env:RUNNER_TEMP 'tia-publicapi-v20'
-
-          $assetId = gh api "repos/$env:TIA_PUBLICAPI_RELEASE_REPOSITORY/releases/tags/$env:TIA_PUBLICAPI_RELEASE_TAG" --jq ".assets[] | select(.name == `"$env:TIA_PUBLICAPI_RELEASE_ASSET_NAME`") | .id"
-          if ([string]::IsNullOrWhiteSpace($assetId)) {
-            Write-Error "Could not find release asset '$env:TIA_PUBLICAPI_RELEASE_ASSET_NAME' in $env:TIA_PUBLICAPI_RELEASE_REPOSITORY@$env:TIA_PUBLICAPI_RELEASE_TAG."
-          }
 
           if (Test-Path $extractRoot) {
             Remove-Item -Path $extractRoot -Recurse -Force
           }
 
-          gh api "repos/$env:TIA_PUBLICAPI_RELEASE_REPOSITORY/releases/assets/$assetId" -H "Accept: application/octet-stream" --output $bundlePath
+          gh release download $env:TIA_PUBLICAPI_RELEASE_TAG `
+            --repo $env:TIA_PUBLICAPI_RELEASE_REPOSITORY `
+            --pattern $env:TIA_PUBLICAPI_RELEASE_ASSET_NAME `
+            --dir $env:RUNNER_TEMP
+
+          $bundlePath = Join-Path $env:RUNNER_TEMP $env:TIA_PUBLICAPI_RELEASE_ASSET_NAME
+          if (-not (Test-Path $bundlePath)) {
+            Write-Error "Could not find downloaded asset at '$bundlePath'. Ensure '$env:TIA_PUBLICAPI_RELEASE_ASSET_NAME' exists in $env:TIA_PUBLICAPI_RELEASE_REPOSITORY@$env:TIA_PUBLICAPI_RELEASE_TAG."
+          }
           Expand-Archive -Path $bundlePath -DestinationPath $extractRoot -Force
 
           $engineeringDll = Get-ChildItem -Path $extractRoot -Filter 'Siemens.Engineering.dll' -Recurse |
