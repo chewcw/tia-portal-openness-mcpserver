@@ -23,6 +23,11 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: Install Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+
       - name: Restore NuGet packages
         run: dotnet restore tia-portal-openness-mcpserver.sln
 
@@ -30,13 +35,9 @@ jobs:
         run: dotnet build tia-portal-openness-mcpserver.sln -c Release --no-restore
 
       - name: Run unit tests (TIA Portal-free only)
-        # FileAdapterTests and ToolsDiTests are the only test classes that do not
-        # require TIA Portal to be installed. All other test classes derive from
-        # TestBase which calls Api.Global.Openness().Initialize() in their
-        # constructor and will fail on a CI runner without TIA Portal installed.
-        run: >
-          dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj
-          -c Release --no-build
+        # Using Task to run unit tests. The test:unit:ci task filters out integration
+        # tests that require TIA Portal to be installed and runs in Release mode.
+        run: task test:unit:ci
 
       - name: Publish application
         run: >

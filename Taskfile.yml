@@ -9,6 +9,10 @@ tasks:
     test:unit:
         cmds:
             - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj --filter "Category!=Integration"
+    test:unit:ci:
+        desc: Run unit tests for CI (Release mode, no rebuild)
+        cmds:
+            - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj -c Release --no-build --filter "Category!=Integration"
     test:integration:
         cmds:
             - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj --filter "Category=Integration"
