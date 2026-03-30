@@ -8,6 +8,9 @@ namespace TiaPortalMcpServer.Models
     /// </summary>
     public class ToolResponse<T>
     {
+        private static readonly bool IncludeErrorDetails =
+            string.Equals(Environment.GetEnvironmentVariable("TIA_MCP_INCLUDE_ERROR_DETAILS"), "true", StringComparison.OrdinalIgnoreCase);
+
         [JsonProperty("success")]
         public bool Success { get; set; }
 
@@ -39,7 +42,7 @@ namespace TiaPortalMcpServer.Models
                 Success = false,
                 Error = error,
                 ErrorCode = errorCode,
-                Details = details
+                Details = IncludeErrorDetails ? details : null
             };
         }
     }

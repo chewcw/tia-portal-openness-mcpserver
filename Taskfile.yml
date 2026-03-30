@@ -6,3 +6,9 @@ tasks:
     test:
         cmds:
             - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj
+    test:unit:
+        cmds:
+            - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj --filter "Category!=Integration"
+    test:integration:
+        cmds:
+            - dotnet test TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj --filter "Category=Integration"

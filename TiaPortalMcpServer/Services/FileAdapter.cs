@@ -58,8 +58,7 @@ namespace TiaPortalMcpServer.Services
                     return Result<string>.CreateError("Path traversal patterns are not allowed.");
 
                 // Verify path is within allowed roots
-                var isAllowed = _allowedRootPaths.Any(root =>
-                    fullPath.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase));
+                var isAllowed = _allowedRootPaths.Any(root => IsPathWithinRoot(fullPath, root));
 
                 if (!isAllowed)
                     return Result<string>.CreateError(
@@ -152,26 +151,36 @@ namespace TiaPortalMcpServer.Services
                 var records = new List<Dictionary<string, string>>();
 
                 using (var reader = new StreamReader(fullPath, encoding))
-                using (var csv = new CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture))
                 {
-                    csv.Context.Configuration.Delimiter = delimiter.ToString();
-                    csv.Read();
-                    csv.ReadHeader();
-
-                    if (csv.HeaderRecord == null || csv.HeaderRecord.Length == 0)
+                    var csvConfig = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
                     {
-                        _logger.LogWarning("CSV file {FilePath} has no headers", fullPath);
-                        return Result<List<Dictionary<string, string>>>.CreateSuccess(records);
-                    }
-
-                    while (csv.Read())
+                        Delimiter = delimiter.ToString()
+                    };
+                    using (var csv = new CsvReader(reader, csvConfig))
                     {
-                        var row = new Dictionary<string, string>();
-                        foreach (var header in csv.HeaderRecord)
+                        if (!csv.Read())
                         {
-                            row[header] = csv.GetField(header) ?? string.Empty;
+                            _logger.LogWarning("CSV file {FilePath} is empty", fullPath);
+                            return Result<List<Dictionary<string, string>>>.CreateSuccess(records);
                         }
-                        records.Add(row);
+
+                        csv.ReadHeader();
+
+                        if (csv.HeaderRecord == null || csv.HeaderRecord.Length == 0)
+                        {
+                            _logger.LogWarning("CSV file {FilePath} has no headers", fullPath);
+                            return Result<List<Dictionary<string, string>>>.CreateSuccess(records);
+                        }
+
+                        while (csv.Read())
+                        {
+                            var row = new Dictionary<string, string>();
+                            foreach (var header in csv.HeaderRecord)
+                            {
+                                row[header] = csv.GetField(header) ?? string.Empty;
+                            }
+                            records.Add(row);
+                        }
                     }
                 }
 
@@ -291,38 +300,49 @@ namespace TiaPortalMcpServer.Services
                 var report = new ValidationReport { IsValid = true, Errors = new List<string>() };
 
                 using (var reader = new StreamReader(fullPath, encoding))
-                using (var csv = new CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture))
                 {
-                    csv.Context.Configuration.Delimiter = delimiter.ToString();
-                    csv.Read();
-                    csv.ReadHeader();
-
-                    if (csv.HeaderRecord == null || csv.HeaderRecord.Length == 0)
+                    var csvConfig = new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
                     {
-                        report.IsValid = false;
-                        report.Errors.Add("CSV file has no headers or is empty.");
-                        return Result<ValidationReport>.CreateSuccess(report);
-                    }
-
-                    var expectedColumnCount = csv.HeaderRecord.Length;
-                    var rowCount = 0;
-
-                    while (csv.Read())
+                        Delimiter = delimiter.ToString()
+                    };
+                    using (var csv = new CsvReader(reader, csvConfig))
                     {
-                        rowCount++;
-                        if (csv.Parser.Count != expectedColumnCount)
+                        if (!csv.Read())
                         {
                             report.IsValid = false;
-                            report.Errors.Add($"Row {rowCount + 1} has {csv.Parser.Count} columns, expected {expectedColumnCount}.");
+                            report.Errors.Add("CSV file has no headers or is empty.");
+                            return Result<ValidationReport>.CreateSuccess(report);
                         }
+
+                        csv.ReadHeader();
+
+                        if (csv.HeaderRecord == null || csv.HeaderRecord.Length == 0)
+                        {
+                            report.IsValid = false;
+                            report.Errors.Add("CSV file has no headers or is empty.");
+                            return Result<ValidationReport>.CreateSuccess(report);
+                        }
+
+                        var expectedColumnCount = csv.HeaderRecord.Length;
+                        var rowCount = 0;
+
+                        while (csv.Read())
+                        {
+                            rowCount++;
+                            if (csv.Parser.Count != expectedColumnCount)
+                            {
+                                report.IsValid = false;
+                                report.Errors.Add($"Row {rowCount + 1} has {csv.Parser.Count} columns, expected {expectedColumnCount}.");
+                            }
+                        }
+
+                        report.RowCount = rowCount;
+                        report.ColumnCount = expectedColumnCount;
+                        report.Headers = csv.HeaderRecord?.ToList();
+
+                        _logger.LogInformation("CSV validation complete: {FilePath} - Valid: {IsValid}, Rows: {RowCount}, Columns: {ColumnCount}",
+                            fullPath, report.IsValid, report.RowCount, report.ColumnCount);
                     }
-
-                    report.RowCount = rowCount;
-                    report.ColumnCount = expectedColumnCount;
-                    report.Headers = csv.HeaderRecord?.ToList();
-
-                    _logger.LogInformation("CSV validation complete: {FilePath} - Valid: {IsValid}, Rows: {RowCount}, Columns: {ColumnCount}",
-                        fullPath, report.IsValid, report.RowCount, report.ColumnCount);
                 }
 
                 return Result<ValidationReport>.CreateSuccess(report);
@@ -351,8 +371,7 @@ namespace TiaPortalMcpServer.Services
                     return Result<string>.CreateError("Invalid output directory");
 
                 // Verify output directory is within allowed roots
-                var isAllowed = _allowedRootPaths.Any(root =>
-                    outputDir.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase));
+                var isAllowed = _allowedRootPaths.Any(root => IsPathWithinRoot(outputDir, root));
 
                 if (!isAllowed)
                     return Result<string>.CreateError(
@@ -394,6 +413,22 @@ namespace TiaPortalMcpServer.Services
                 _logger.LogError(ex, "Error writing CSV file: {FilePath}", filePath);
                 return Result<string>.CreateError($"Error writing CSV file: {ex.Message}");
             }
+        }
+
+        private static bool IsPathWithinRoot(string path, string root)
+        {
+            var fullPath = Path.GetFullPath(path)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var fullRoot = Path.GetFullPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            if (fullPath.Equals(fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var rootWithSeparator = fullRoot + Path.DirectorySeparatorChar;
+            return fullPath.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase);
         }
     }
 

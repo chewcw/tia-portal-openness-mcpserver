@@ -23,6 +23,13 @@ namespace TiaPortalMcpServer.Tests
         [Fact]
         public async Task CreateProject_ValidName_ReturnsSuccess()
         {
+            // Arrange - ensure no project is open and no stale output exists
+            var sessionManager = ServiceProvider.GetRequiredService<TiaPortalSessionManager>();
+            sessionManager.CloseCurrentProject();
+            var staleDir = System.IO.Path.Combine("C:\\Temp", "TestProject");
+            if (System.IO.Directory.Exists(staleDir))
+                System.IO.Directory.Delete(staleDir, true);
+
             // Act
             var result = await _projectTools.projects_create(null, "TestProject", "C:\\Temp", CancellationToken.None);
 

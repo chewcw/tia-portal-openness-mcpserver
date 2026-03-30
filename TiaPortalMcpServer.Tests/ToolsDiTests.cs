@@ -9,6 +9,7 @@ using Serilog.Events;
 
 namespace TiaPortalMcpServer.Tests
 {
+    [Trait("Category", "Unit")]
     public class ToolsDiTests
     {
         [Fact]

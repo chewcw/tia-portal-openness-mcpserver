@@ -88,32 +88,26 @@ namespace TiaPortalMcpServer
 
             try
             {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use projects_open first."
-                        )
-                    );
-                }
-
                 var libraries = new List<string>();
 
-                var librariesProperty = project.GetType().GetProperty("Libraries");
-                if (librariesProperty != null)
+                var project = _sessionManager.CurrentProject;
+                if (project != null)
                 {
-                    var librariesValue = librariesProperty.GetValue(project);
-                    if (librariesValue is IEnumerable enumerable)
+
+                    var librariesProperty = project.GetType().GetProperty("Libraries");
+                    if (librariesProperty != null)
                     {
-                        foreach (var item in enumerable)
+                        var librariesValue = librariesProperty.GetValue(project);
+                        if (librariesValue is IEnumerable enumerable)
                         {
-                            var nameProperty = item?.GetType().GetProperty("Name");
-                            var nameValue = nameProperty?.GetValue(item)?.ToString();
-                            if (!string.IsNullOrWhiteSpace(nameValue))
+                            foreach (var item in enumerable)
                             {
-                                libraries.Add(nameValue!);
+                                var nameProperty = item?.GetType().GetProperty("Name");
+                                var nameValue = nameProperty?.GetValue(item)?.ToString();
+                                if (!string.IsNullOrWhiteSpace(nameValue))
+                                {
+                                    libraries.Add(nameValue!);
+                                }
                             }
                         }
                     }

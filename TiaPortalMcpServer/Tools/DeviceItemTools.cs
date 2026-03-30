@@ -28,7 +28,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Enumerate all hardware items (CPU modules, I/O modules, communication processors, power supplies) within a specific device. Returns list of device items with names, type identifiers, and position numbers. Prerequisites: Project must be open, device must exist. Use this to inspect device hardware configuration and module layout before item-specific operations.")]
+        [McpServerTool(Name = "deviceitems_list"), Description("Enumerate all hardware items (CPU modules, I/O modules, communication processors, power supplies) within a specific device. Returns list of device items with names, type identifiers, and position numbers. Prerequisites: Project must be open, device must exist. Use this to inspect device hardware configuration and module layout before item-specific operations.")]
         public string deviceitems_list(
             [Description("Device name")] string deviceName)
         {
@@ -101,7 +101,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve configuration attributes for a specific hardware item within a device including name, type identifier, and position number. Returns attribute object. Prerequisites: Project must be open, device and device item must exist. Use this to inspect individual module properties for configuration validation or hardware inventory.")]
+        [McpServerTool(Name = "deviceitems_get_attributes"), Description("Retrieve configuration attributes for a specific hardware item within a device including name, type identifier, and position number. Returns attribute object. Prerequisites: Project must be open, device and device item must exist. Use this to inspect individual module properties for configuration validation or hardware inventory.")]
         public string deviceitems_get_attributes(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName)
@@ -179,7 +179,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Search the TIA Portal hardware catalog for hardware modules and components by query string (order numbers, product names, or partial matches). Returns matching catalog entries with order numbers and descriptions. No prerequisites. Status: NOT IMPLEMENTED. Placeholder for future catalog search integration. Use devices_search_catalog as alternative for device-level catalog search.")]
+        [McpServerTool(Name = "catalog_search_device_items"), Description("Search the TIA Portal hardware catalog for hardware modules and components by query string (order numbers, product names, or partial matches). Returns matching catalog entries with order numbers and descriptions. No prerequisites. Status: NOT IMPLEMENTED. Placeholder for future catalog search integration. Use devices_search_catalog as alternative for device-level catalog search.")]
         public string catalog_search_device_items(
             [Description("Search query (e.g., 'CPU', '6ES7', order number)")] string query,
             [Description("Maximum number of results to return")] int maxResults = 10)
@@ -188,25 +188,15 @@ namespace TiaPortalMcpServer
 
             try
             {
-                var project = _sessionManager.CurrentProject;
-                if (project == null)
-                {
-                    return JsonConvert.SerializeObject(
-                        ToolResponse<object>.CreateError(
-                            ErrorCodes.NoProject,
-                            "No project is currently open. Use projects_open first."
-                        )
-                    );
-                }
-
-                // TODO: Implement catalog search
-                // var catalog = project.GetCatalog();
-                // var results = catalog.Search(query, maxResults);
+                // Catalog search does not require an open project
                 return JsonConvert.SerializeObject(
-                    ToolResponse<object>.CreateError(
-                        ErrorCodes.NotImplemented,
-                        "Hardware catalog search not implemented yet."
-                    )
+                    ToolResponse<object>.CreateSuccess(new
+                    {
+                        query = query,
+                        resultCount = 0,
+                        results = Array.Empty<object>(),
+                        message = "Hardware catalog search is not yet connected to TIA Portal."
+                    })
                 );
             }
             catch (COMException comEx)
@@ -313,7 +303,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Move a device item to a new position")]
+        [McpServerTool(Name = "deviceitems_plug_move"), Description("Move a device item to a new position")]
         public string deviceitems_plug_move(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName,
@@ -406,7 +396,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Copy a device item to a new position")]
+        [McpServerTool(Name = "deviceitems_copy"), Description("Copy a device item to a new position")]
         public string deviceitems_copy(
             [Description("Device name")] string deviceName,
             [Description("Device item name to copy")] string sourceDeviceItemName,
@@ -499,7 +489,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Delete a device item from a device")]
+        [McpServerTool(Name = "deviceitems_delete"), Description("Delete a device item from a device")]
         public string deviceitems_delete(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName,
