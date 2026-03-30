@@ -10,6 +10,11 @@ jobs:
     name: Build and publish release
     runs-on: windows-latest
 
+    env:
+      TIA_PUBLICAPI_RELEASE_REPOSITORY: ${{ vars.TIA_PUBLICAPI_RELEASE_REPOSITORY }}
+      TIA_PUBLICAPI_RELEASE_TAG: ${{ vars.TIA_PUBLICAPI_RELEASE_TAG }}
+      TIA_PUBLICAPI_RELEASE_ASSET_NAME: ${{ vars.TIA_PUBLICAPI_RELEASE_ASSET_NAME }}
+
     # Required to create GitHub Releases and upload assets
     permissions:
       contents: write
@@ -28,11 +33,61 @@ jobs:
         with:
           version: 3.x
 
+      - name: Stage TIA Portal PublicAPI bundle
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.TIA_PUBLICAPI_GITHUB_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+            Write-Error "Secret TIA_PUBLICAPI_GITHUB_TOKEN is required. Provide a token with read access to the release asset repository."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:TIA_PUBLICAPI_RELEASE_REPOSITORY)) {
+            Write-Error "Repository variable TIA_PUBLICAPI_RELEASE_REPOSITORY is required (owner/repo)."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:TIA_PUBLICAPI_RELEASE_TAG)) {
+            Write-Error "Repository variable TIA_PUBLICAPI_RELEASE_TAG is required (for example: v20-publicapi)."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:TIA_PUBLICAPI_RELEASE_ASSET_NAME)) {
+            Write-Error "Repository variable TIA_PUBLICAPI_RELEASE_ASSET_NAME is required (for example: PortalV20-PublicAPI-V20.zip)."
+          }
+
+          $bundlePath = Join-Path $env:RUNNER_TEMP 'tia-publicapi-v20.zip'
+          $extractRoot = Join-Path $env:RUNNER_TEMP 'tia-publicapi-v20'
+
+          $assetId = gh api "repos/$env:TIA_PUBLICAPI_RELEASE_REPOSITORY/releases/tags/$env:TIA_PUBLICAPI_RELEASE_TAG" --jq ".assets[] | select(.name == \"$env:TIA_PUBLICAPI_RELEASE_ASSET_NAME\") | .id"
+          if ([string]::IsNullOrWhiteSpace($assetId)) {
+            Write-Error "Could not find release asset '$env:TIA_PUBLICAPI_RELEASE_ASSET_NAME' in $env:TIA_PUBLICAPI_RELEASE_REPOSITORY@$env:TIA_PUBLICAPI_RELEASE_TAG."
+          }
+
+          if (Test-Path $extractRoot) {
+            Remove-Item -Path $extractRoot -Recurse -Force
+          }
+
+          gh api "repos/$env:TIA_PUBLICAPI_RELEASE_REPOSITORY/releases/assets/$assetId" -H "Accept: application/octet-stream" --output $bundlePath
+          Expand-Archive -Path $bundlePath -DestinationPath $extractRoot -Force
+
+          $engineeringDll = Get-ChildItem -Path $extractRoot -Filter 'Siemens.Engineering.dll' -Recurse |
+            Where-Object { $_.FullName -match '[\\/]+PublicAPI[\\/]+V20[\\/]+' } |
+            Select-Object -First 1
+
+          if ($null -eq $engineeringDll) {
+            Write-Error "The staged bundle did not contain PublicAPI/V20/Siemens.Engineering.dll."
+          }
+
+          $v20Directory = Split-Path -Path $engineeringDll.FullName -Parent
+          $publicApiDirectory = Split-Path -Path $v20Directory -Parent
+          $tiaPortalLocation = Split-Path -Path $publicApiDirectory -Parent
+
+          "TiaPortalLocation=$tiaPortalLocation" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Restore NuGet packages
         run: dotnet restore tia-portal-openness-mcpserver.sln
 
       - name: Build (Release)
-        run: dotnet build tia-portal-openness-mcpserver.sln -c Release --no-restore
+        run: dotnet build tia-portal-openness-mcpserver.sln -c Release --no-restore -p:TiaPortalLocation="${{ env.TiaPortalLocation }}"
 
       - name: Run unit tests (TIA Portal-free only)
         # Using Task to run unit tests. The test:unit:ci task filters out integration
@@ -43,6 +98,7 @@ jobs:
         run: >
           dotnet publish TiaPortalMcpServer/TiaPortalMcpServer.csproj
           -c Release -f net48 --no-build
+          -p:TiaPortalLocation="${{ env.TiaPortalLocation }}"
           --output ./dist
 
       - name: Package as zip

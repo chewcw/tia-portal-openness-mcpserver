@@ -17,6 +17,30 @@ This server provides tools for:
 - The server runs on stdio transport for MCP communication
 - Default network endpoint (if a network transport is enabled): `127.0.0.1:3000` — override with environment variables `MCP_HOST` / `MCP_PORT` or configuration keys `MCP:Host` / `MCP:Port`
 
+### CI Build Requirement
+
+The server project cannot be built from nuget.org packages alone. The Siemens TIA Openness NuGet package only wires up references; it still expects `Siemens.Engineering.dll` to be available through `TiaPortalLocation` or a matching TIA Portal registry entry.
+
+The release workflow uses `windows-latest` and stages a private zip bundle from a GitHub Release asset containing the TIA Portal V20 `PublicAPI\V20` assemblies.
+
+Configure these repository variables:
+
+- `TIA_PUBLICAPI_RELEASE_REPOSITORY`: artifact repository in `owner/repo` format
+- `TIA_PUBLICAPI_RELEASE_TAG`: release tag that contains the zip asset
+- `TIA_PUBLICAPI_RELEASE_ASSET_NAME`: zip asset name, for example `PortalV20-PublicAPI-V20.zip`
+
+Configure this repository secret:
+
+- `TIA_PUBLICAPI_GITHUB_TOKEN`: token with read access to the artifact repository release assets
+
+The bundle must contain a directory that resolves to this shape after extraction:
+
+```text
+<some-root>\PublicAPI\V20\Siemens.Engineering.dll
+```
+
+The workflow derives `TiaPortalLocation` from that extracted layout and passes it to MSBuild automatically.
+
 ## Installation
 
 1. Ensure TIA Portal V20 is installed at the default location
@@ -28,6 +52,20 @@ This server provides tools for:
    ```bash
    dotnet run
    ```
+
+### CLI-Based Installation
+
+The repository also contains a TypeScript CLI under `../cli` for release-based installation and updates.
+
+Examples:
+
+```bash
+npx @tiaportal/mcp-server-cli list
+npx @tiaportal/mcp-server-cli install --server-version v1.0.0
+npx @tiaportal/mcp-server-cli update
+```
+
+Set `TIA_MCP_GITHUB_REPOSITORY` to the GitHub repository in `owner/repo` format before using release-based commands.
 
 ## Tools Available
 
