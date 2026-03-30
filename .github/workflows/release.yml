@@ -73,16 +73,27 @@ jobs:
           Expand-Archive -Path $bundlePath -DestinationPath $extractRoot -Force
 
           $engineeringDll = Get-ChildItem -Path $extractRoot -Filter 'Siemens.Engineering.dll' -Recurse |
-            Where-Object { $_.FullName -match '[\\/]+PublicAPI[\\/]+V20[\\/]+' } |
             Select-Object -First 1
 
           if ($null -eq $engineeringDll) {
-            Write-Error "The staged bundle did not contain PublicAPI/V20/Siemens.Engineering.dll."
+            Write-Error "The staged bundle did not contain Siemens.Engineering.dll anywhere in the archive."
           }
 
-          $v20Directory = Split-Path -Path $engineeringDll.FullName -Parent
-          $publicApiDirectory = Split-Path -Path $v20Directory -Parent
-          $tiaPortalLocation = Split-Path -Path $publicApiDirectory -Parent
+          if ($engineeringDll.FullName -match '[\\/]+PublicAPI[\\/]+V20[\\/]+') {
+            $v20Directory = Split-Path -Path $engineeringDll.FullName -Parent
+            $publicApiDirectory = Split-Path -Path $v20Directory -Parent
+            $tiaPortalLocation = Split-Path -Path $publicApiDirectory -Parent
+          } else {
+            # DLL found but not in a PublicAPI/V20 directory tree.
+            # Build the expected layout so MSBuild can resolve TiaPortalLocation.
+            # Copy recursively to preserve any localization sub-directories that
+            # may exist alongside the assemblies (e.g. de-DE\, en-US\).
+            $tiaPortalLocation = Join-Path $env:RUNNER_TEMP 'tia-portal-staged'
+            $v20Directory = Join-Path $tiaPortalLocation 'PublicAPI\V20'
+            New-Item -ItemType Directory -Path $v20Directory -Force | Out-Null
+            $dllSourceDir = Split-Path -Path $engineeringDll.FullName -Parent
+            Copy-Item -Path "$dllSourceDir\*" -Destination $v20Directory -Recurse -Force
+          }
 
           "TiaPortalLocation=$tiaPortalLocation" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 

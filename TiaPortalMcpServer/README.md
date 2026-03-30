@@ -33,13 +33,21 @@ Configure this repository secret:
 
 - `TIA_PUBLICAPI_GITHUB_TOKEN`: token with read access to the artifact repository release assets
 
-The bundle must contain a directory that resolves to this shape after extraction:
+The bundle must contain `Siemens.Engineering.dll` somewhere in the archive. Two layouts are accepted:
 
-```text
-<some-root>\PublicAPI\V20\Siemens.Engineering.dll
-```
+1. **Preferred** – DLL already nested under a `PublicAPI\V20` directory tree:
+   ```text
+   <some-root>\PublicAPI\V20\Siemens.Engineering.dll
+   ```
+   The workflow derives `TiaPortalLocation` from `<some-root>` and passes it to MSBuild automatically.
 
-The workflow derives `TiaPortalLocation` from that extracted layout and passes it to MSBuild automatically.
+2. **Flat** – DLL (and sibling assemblies) at the archive root or any other location *not* containing `PublicAPI\V20` in the path:
+   ```text
+   Siemens.Engineering.dll
+   Siemens.Engineering.Hmi.dll
+   ...
+   ```
+   The workflow automatically constructs the expected `PublicAPI\V20` directory tree from the DLL's source directory so that MSBuild can resolve `TiaPortalLocation`.
 
 ## Installation
 
