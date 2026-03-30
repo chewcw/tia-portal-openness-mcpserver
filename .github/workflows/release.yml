@@ -115,15 +115,21 @@ jobs:
           -p:TiaPortalLocation="${{ env.TiaPortalLocation }}"
           --output ./dist
 
+      - name: Set zip name
+        shell: pwsh
+        run: |
+          $zipName = "TiaPortalMcpServer-${{ github.ref_name }}".Replace('/', '-')
+          "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Package as zip
         shell: pwsh
-        run: Compress-Archive -Path ./dist/* -DestinationPath ./TiaPortalMcpServer-${{ github.ref_name }}.zip
+        run: Compress-Archive -Path ./dist/* -DestinationPath "./${{ env.ZIP_NAME }}.zip"
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
           gh release create ${{ github.ref_name }}
-          ./TiaPortalMcpServer-${{ github.ref_name }}.zip
+          ./${{ env.ZIP_NAME }}.zip
           --title "Release ${{ github.ref_name }}"
           --generate-notes
