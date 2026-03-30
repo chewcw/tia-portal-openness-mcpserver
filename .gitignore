@@ -45,3 +45,24 @@ TestResults/
 
 # Publish
 publish/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log
+.npm
+.yarn-integrity
+dist/
+build/
+.cache/
+.eslintcache
+.parcel-cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Package locks
+package-lock.json
+yarn.lock

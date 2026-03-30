@@ -1,5 +1,17 @@
 version: '3'
 tasks:
+    cli:install:
+        cmds:
+            - cd cli && npm install
+    cli:typecheck:
+        cmds:
+            - cd cli && npm run typecheck
+    cli:build:
+        cmds:
+            - cd cli && npm run build
+    cli:test:
+        cmds:
+            - cd cli && npm run test
     inspector:
         cmds:
             - npx @modelcontextprotocol/inspector dotnet run --project TiaPortalMcpServer/TiaPortalMcpServer.csproj

@@ -1,0 +1,32 @@
+{
+  "name": "@tiaportal/mcp-server-cli",
+  "version": "0.1.0",
+  "description": "TypeScript CLI to install and manage TIA Portal MCP Server releases",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tia-mcp": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.3.2",
+    "extract-zip": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
