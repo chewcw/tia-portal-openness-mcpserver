@@ -88,6 +88,8 @@ export async function installCommand(context: CommandContext): Promise<number> {
         repoUrl,
         ref,
         localPath: skillsResult.destinationPath,
+        selectedSkills: ["all"],
+        selectedPaths: ["."],
         syncedAtUtc: new Date().toISOString(),
         serverVersion: release.tagName,
       },

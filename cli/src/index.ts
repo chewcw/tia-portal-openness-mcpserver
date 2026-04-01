@@ -31,6 +31,8 @@ function printHelp(): void {
       "  --install-dir <path>",
       "  --skills-repo <url>",
       "  --skills-ref <ref>",
+      "  --skills <name[,name...]>",
+      "  --all",
       "  --verbose",
     ].join("\n") + "\n"
   );

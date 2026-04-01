@@ -23,6 +23,8 @@ This directory contains the TypeScript CLI used to install and manage TIA Portal
 - --install-dir <path>: Override default install root.
 - --skills-repo <url>: Companion skills repository URL.
 - --skills-ref <ref>: Tag, branch, or commit for companion skills.
+- --skills <name[,name...]>: Sync specific skills under the companion namespace.
+- --all: Sync all available skills in the companion namespace.
 - --yes: Accept defaults for interactive prompts.
 - --non-interactive: Disable prompts and require explicit flags for required values.
 - --verbose: Enable verbose diagnostics output.

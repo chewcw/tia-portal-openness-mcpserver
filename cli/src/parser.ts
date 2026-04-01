@@ -18,13 +18,28 @@ function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOption
 function parseValueFlag(
   args: string[],
   index: number,
-  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skillsRepo" | "skillsRef">,
+  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skillsRepo" | "skillsRef" | "skills">,
   options: GlobalOptions
 ): number {
   const value = args[index + 1];
   if (!value || value.startsWith("-")) {
     throw new Error(`Missing value for flag ${args[index]}`);
   }
+
+  if (key === "skills") {
+    const parsed = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (parsed.length === 0) {
+      throw new Error("Missing skill names for flag --skills");
+    }
+
+    options.skills = parsed;
+    return index + 1;
+  }
+
   options[key] = value;
   return index + 1;
 }
@@ -36,6 +51,7 @@ export function parseArgs(argv: string[]): ParsedCommand {
     yes: false,
     nonInteractive: false,
     verbose: false,
+    allSkills: false,
   };
 
   let commandName: string | undefined;
@@ -72,6 +88,11 @@ export function parseArgs(argv: string[]): ParsedCommand {
       continue;
     }
 
+    if (token === "--all") {
+      i = parseBooleanFlag(argv, i, "allSkills", options);
+      continue;
+    }
+
     if (token === "--server-version") {
       i = parseValueFlag(argv, i, "serverVersion", options);
       continue;
@@ -89,6 +110,11 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
     if (token === "--skills-ref") {
       i = parseValueFlag(argv, i, "skillsRef", options);
+      continue;
+    }
+
+    if (token === "--skills") {
+      i = parseValueFlag(argv, i, "skills", options);
       continue;
     }
 

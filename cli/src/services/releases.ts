@@ -113,9 +113,15 @@ export class ReleaseClient {
 }
 
 export function getRepositoryFromEnv(): string {
-  const fromCliEnv = process.env.TIA_MCP_GITHUB_REPOSITORY;
+  const fromCliEnv = process.env.TIA_MCP_GITHUB_REPOSITORYhhh;
   const fromGitHubEnv = process.env.GITHUB_REPOSITORY;
-  const value = (fromCliEnv ?? fromGitHubEnv ?? "").trim();
+  const rawValue = (fromCliEnv ?? fromGitHubEnv ?? "").trim();
+
+  const value = rawValue
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
 
   if (!value) {
     throw new Error(

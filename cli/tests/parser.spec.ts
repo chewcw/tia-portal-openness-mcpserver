@@ -31,4 +31,18 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["download", "--server-version"]))
       .toThrow("Missing value for flag --server-version");
   });
+
+  it("parses skills CSV and --all flags", () => {
+    const parsed = parseArgs(["skills", "sync", "--skills", "alpha,beta", "--all"]);
+
+    expect(parsed.name).toBe("skills");
+    expect(parsed.args).toEqual(["sync"]);
+    expect(parsed.options.skills).toEqual(["alpha", "beta"]);
+    expect(parsed.options.allSkills).toBe(true);
+  });
+
+  it("throws for empty --skills value", () => {
+    expect(() => parseArgs(["skills", "sync", "--skills", ",,"]))
+      .toThrow("Missing skill names for flag --skills");
+  });
 });

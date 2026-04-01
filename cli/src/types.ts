@@ -4,10 +4,12 @@ export interface GlobalOptions {
   yes: boolean;
   nonInteractive: boolean;
   verbose: boolean;
+  allSkills: boolean;
   serverVersion?: string;
   installDir?: string;
   skillsRepo?: string;
   skillsRef?: string;
+  skills?: string[];
 }
 
 export interface ParsedCommand {

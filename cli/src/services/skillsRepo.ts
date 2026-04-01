@@ -8,20 +8,32 @@ export interface SkillsSyncOptions {
   repoUrl: string;
   ref: string;
   destinationPath: string;
+  sparsePaths?: string[];
 }
 
 export interface SkillsSyncResult {
   destinationPath: string;
   ref: string;
+  sparsePaths: string[];
 }
 
-function runGit(args: string[]): Promise<void> {
+interface GitRunResult {
+  stdout: string;
+  stderr: string;
+}
+
+function runGit(args: string[]): Promise<GitRunResult> {
   return new Promise((resolve, reject) => {
     const child = spawn("git", args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
+    let stdout = "";
     let stderr = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
 
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
@@ -34,13 +46,55 @@ function runGit(args: string[]): Promise<void> {
 
     child.on("close", (code) => {
       if (code === 0) {
-        resolve();
+        resolve({
+          stdout,
+          stderr,
+        });
         return;
       }
 
       reject(new ExternalCommandError("git", `${args.join(" ")} failed with code ${code}: ${stderr.trim()}`));
     });
   });
+}
+
+function normalizePaths(paths: string[] | undefined): string[] {
+  if (!paths) {
+    return [];
+  }
+
+  const unique = new Set<string>();
+
+  for (const entry of paths) {
+    const normalized = entry.replace(/\\/g, "/").trim().replace(/^\/+/, "");
+    if (normalized.length > 0) {
+      unique.add(normalized);
+    }
+  }
+
+  return [...unique].sort((a, b) => a.localeCompare(b));
+}
+
+function parseDirectoryListing(raw: string): string[] {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export async function listDirectoryEntriesAtRef(
+  repositoryPath: string,
+  ref: string,
+  namespacePath: string
+): Promise<string[]> {
+  const namespace = namespacePath.trim().replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!namespace) {
+    throw new Error("Skills namespace path must not be empty.");
+  }
+
+  const result = await runGit(["-C", repositoryPath, "ls-tree", "-d", "--name-only", `${ref}:${namespace}`]);
+  return parseDirectoryListing(result.stdout);
 }
 
 async function hasGitRepository(pathValue: string): Promise<boolean> {
@@ -64,6 +118,8 @@ export async function syncSkillsRepository(options: SkillsSyncOptions): Promise<
     throw new Error("Skills repository ref is required when skills sync is enabled.");
   }
 
+  const sparsePaths = normalizePaths(options.sparsePaths);
+
   await mkdir(options.destinationPath, { recursive: true });
   await ensureGitAvailable();
 
@@ -71,14 +127,21 @@ export async function syncSkillsRepository(options: SkillsSyncOptions): Promise<
 
   if (!alreadyCloned) {
     await rm(options.destinationPath, { recursive: true, force: true });
-    await runGit(["clone", "--depth", "1", "--branch", ref, repoUrl, options.destinationPath]);
+    await runGit(["clone", "--filter=blob:none", "--no-checkout", repoUrl, options.destinationPath]);
   } else {
     await runGit(["-C", options.destinationPath, "fetch", "--all", "--tags", "--prune"]);
-    await runGit(["-C", options.destinationPath, "checkout", ref]);
   }
+
+  if (sparsePaths.length > 0) {
+    await runGit(["-C", options.destinationPath, "sparse-checkout", "init", "--cone"]);
+    await runGit(["-C", options.destinationPath, "sparse-checkout", "set", ...sparsePaths]);
+  }
+
+  await runGit(["-C", options.destinationPath, "checkout", ref]);
 
   return {
     destinationPath: options.destinationPath,
     ref,
+    sparsePaths,
   };
 }

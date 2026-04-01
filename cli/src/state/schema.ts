@@ -15,6 +15,8 @@ export interface SkillsState {
   repoUrl: string;
   ref: string;
   localPath: string;
+  selectedSkills: string[];
+  selectedPaths: string[];
   syncedAtUtc: string;
   serverVersion: string;
 }
@@ -59,6 +61,12 @@ export function isSkillsState(value: unknown): value is SkillsState {
     isNonEmptyString(candidate.repoUrl) &&
     isNonEmptyString(candidate.ref) &&
     isNonEmptyString(candidate.localPath) &&
+    Array.isArray(candidate.selectedSkills) &&
+    candidate.selectedSkills.length > 0 &&
+    candidate.selectedSkills.every((entry) => isNonEmptyString(entry)) &&
+    Array.isArray(candidate.selectedPaths) &&
+    candidate.selectedPaths.length > 0 &&
+    candidate.selectedPaths.every((entry) => isNonEmptyString(entry)) &&
     isNonEmptyString(candidate.syncedAtUtc) &&
     isNonEmptyString(candidate.serverVersion)
   );
