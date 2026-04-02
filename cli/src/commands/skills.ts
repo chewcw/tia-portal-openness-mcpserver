@@ -1,26 +1,91 @@
 import { CommandContext } from "../types.js";
 import { readdir } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import {
   listDirectoryEntriesAtRef,
   syncSkillsRepository,
 } from "../services/skillsRepo.js";
-import { getDefaultStateFilePath, loadCliState } from "../state/installStateStore.js";
+import { loadCliState } from "../state/installStateStore.js";
 import { saveSkillsState } from "../state/skillsStateStore.js";
 import { SCHEMA_VERSION } from "../state/schema.js";
+import { getSkillsPath, getStateFilePath } from "../services/agentPathResolver.js";
 
 const DEFAULT_NAMESPACE_PATH = "siemens";
+
+function printSkillsHelp(): void {
+  process.stdout.write(
+    [
+      "Manage companion skills",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver skills [options] [subcommand] [subcommand-options]",
+      "",
+      "Subcommands:",
+      "  status  Show current skills configuration",
+      "  sync    Synchronize skills from repository",
+      "  list    List locally available skills",
+      "",
+      "Options:",
+      "  --skills-repo <url>   Skills repository URL",
+      "  --skills-ref <ref>    Git reference (branch, tag, commit)",
+      "  --skills <name[,name...]>  Specific skills to manage",
+      "  --all                 Manage all skills",
+      "  --help                Show help",
+      "  --version             Show version",
+    ].join("\n") + "\n"
+  );
+}
+
+function printSkillsStatusHelp(): void {
+  process.stdout.write(
+    [
+      "Show current skills configuration",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver skills status [options]",
+      "",
+      "Options:",
+      "  --help                  Show help",
+    ].join("\n") + "\n"
+  );
+}
+
+function printSkillsSyncHelp(): void {
+  process.stdout.write(
+    [
+      "Synchronize skills from repository",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver skills sync [options]",
+      "",
+      "Options:",
+      "  --skills-repo <url>   Skills repository URL",
+      "  --skills-ref <ref>    Git reference (branch, tag, commit)",
+      "  --skills <name[,name...]>  Specific skills to sync",
+      "  --all                 Sync all skills",
+      "  --help                Show help",
+    ].join("\n") + "\n"
+  );
+}
+
+function printSkillsListHelp(): void {
+  process.stdout.write(
+    [
+      "List locally available skills",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver skills list [options]",
+      "",
+      "Options:",
+      "  --help                  Show help",
+    ].join("\n") + "\n"
+  );
+}
 
 interface NormalizedSkillsRepo {
   repositoryUrl: string;
   treeRef?: string;
   namespacePath: string;
-}
-
-function getDefaultSkillsPath(): string {
-  const appData = process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-  return path.join(appData, "TiaPortalMcpServerCli", "skills");
 }
 
 function normalizeRepositorySource(source: string | undefined): NormalizedSkillsRepo | undefined {
@@ -112,7 +177,7 @@ function resolveSubcommand(args: string[]): string {
 }
 
 async function printStatus(): Promise<number> {
-  const stateFilePath = getDefaultStateFilePath();
+  const stateFilePath = getStateFilePath();
   const state = await loadCliState(stateFilePath);
 
   if (!state.skills) {
@@ -136,7 +201,7 @@ async function printStatus(): Promise<number> {
 }
 
 async function syncSkills(context: CommandContext): Promise<number> {
-  const stateFilePath = getDefaultStateFilePath();
+  const stateFilePath = getStateFilePath();
   const state = await loadCliState(stateFilePath);
 
   const parsedRepo = normalizeRepositorySource(context.parsed.options.skillsRepo || "https://github.com/chewcw/agent-skills/tree/main/siemens");
@@ -156,7 +221,7 @@ async function syncSkills(context: CommandContext): Promise<number> {
     state.installedServer?.serverVersion ??
     "main";
 
-  const destinationPath = state.skills?.localPath ?? getDefaultSkillsPath();
+  const destinationPath = state.skills?.localPath ?? getSkillsPath();
   const requestedSkills = parseRequestedSkills(context.parsed.options.skills);
 
   if (context.parsed.options.allSkills && requestedSkills.length > 0) {
@@ -229,8 +294,8 @@ async function syncSkills(context: CommandContext): Promise<number> {
 }
 
 async function listSkills(): Promise<number> {
-  const state = await loadCliState(getDefaultStateFilePath());
-  const root = state.skills?.localPath ?? getDefaultSkillsPath();
+  const state = await loadCliState(getStateFilePath());
+  const root = state.skills?.localPath ?? getSkillsPath();
 
   try {
     const names = await listLocalSkillFolders(root);
@@ -248,6 +313,31 @@ async function listSkills(): Promise<number> {
 }
 
 export async function skillsCommand(context: CommandContext): Promise<number> {
+  // Check for help flag first
+  if (context.parsed.options.help) {
+    const subcommand = resolveSubcommand(context.parsed.args);
+    
+    // Show specific help based on subcommand
+    if (subcommand === "status") {
+      printSkillsStatusHelp();
+      return 0;
+    }
+    
+    if (subcommand === "sync") {
+      printSkillsSyncHelp();
+      return 0;
+    }
+    
+    if (subcommand === "list") {
+      printSkillsListHelp();
+      return 0;
+    }
+    
+    // Show general skills help if no subcommand or unknown subcommand
+    printSkillsHelp();
+    return 0;
+  }
+
   const subcommand = resolveSubcommand(context.parsed.args);
 
   if (!subcommand) {
@@ -263,5 +353,10 @@ export async function skillsCommand(context: CommandContext): Promise<number> {
     return syncSkills(context);
   }
 
-  return listSkills();
+  if (subcommand === "list") {
+    return listSkills();
+  }
+
+  process.stderr.write("Unknown skills subcommand. Use: status, sync, or list.\n");
+  return 1;
 }

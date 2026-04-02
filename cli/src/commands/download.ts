@@ -4,7 +4,31 @@ import { downloadAsset } from "../services/downloader.js";
 import { extractZipToStaging } from "../services/extract.js";
 import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 
+function printDownloadHelp(): void {
+  process.stdout.write(
+    [
+      "Download a release asset",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver download [options] [version]",
+      "",
+      "Arguments:",
+      "  version  Specific version to download (defaults to latest)",
+      "",
+      "Options:",
+      "  --server-version <tag>  Specific version to download",
+      "  --install-dir <path>    Output directory (defaults to ./downloads)",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
+
 export async function downloadCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printDownloadHelp();
+    return 0;
+  }
   const repository = getRepositoryFromEnv();
   const versionFromArg = context.parsed.args[0];
   const version = context.parsed.options.serverVersion ?? versionFromArg;

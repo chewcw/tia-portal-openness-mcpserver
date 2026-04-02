@@ -113,7 +113,7 @@ export class ReleaseClient {
 }
 
 export function getRepositoryFromEnv(): string {
-  const fromCliEnv = process.env.TIA_MCP_GITHUB_REPOSITORYhhh;
+  const fromCliEnv = process.env.TIA_MCP_GITHUB_REPOSITORY;
   const fromGitHubEnv = process.env.GITHUB_REPOSITORY;
   const rawValue = (fromCliEnv ?? fromGitHubEnv ?? "").trim();
 

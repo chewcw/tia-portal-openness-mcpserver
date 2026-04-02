@@ -6,22 +6,50 @@ import { extractZipToStaging } from "../services/extract.js";
 import { installExtractedContent } from "../services/installTransaction.js";
 import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 import { syncSkillsRepository } from "../services/skillsRepo.js";
-import { getDefaultStateFilePath, loadCliState, saveCliState } from "../state/installStateStore.js";
+import { loadCliState, saveCliState } from "../state/installStateStore.js";
 import { saveSkillsState } from "../state/skillsStateStore.js";
 import { SCHEMA_VERSION } from "../state/schema.js";
 import { collectInstallPromptResult } from "../ui/prompts.js";
+import { getSkillsPath, getStateFilePath } from "../services/agentPathResolver.js";
+
+function printInstallHelp(): void {
+  process.stdout.write(
+    [
+      "Install latest or selected server release",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver install [options] [version]",
+      "",
+      "Arguments:",
+      "  version  Specific version to install (defaults to latest)",
+      "",
+      "Options:",
+      "  --server-version <tag>  Specific version to install",
+      "  --install-dir <path>    Installation directory",
+      "  --skills-repo <url>     Skills repository URL",
+      "  --skills-ref <ref>      Git reference (branch, tag, commit)",
+      "  --skills <name[,name...]>  Specific skills to install",
+      "  --all                   Install all skills",
+      "  --yes                   Accept prompt defaults",
+      "  --non-interactive       Disable prompts",
+      "  --verbose               Verbose output",
+      "  --agent-type <type>     Agent type (opencode|claude|cursor|generic)",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
 
 function getDefaultInstallRoot(): string {
   const appData = process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
   return path.join(appData, "TiaPortalMcpServerCli", "server");
 }
 
-function getDefaultSkillsPath(): string {
-  const appData = process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-  return path.join(appData, "TiaPortalMcpServerCli", "skills");
-}
-
 export async function installCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printInstallHelp();
+    return 0;
+  }
   const repository = getRepositoryFromEnv();
   const version = context.parsed.options.serverVersion ?? context.parsed.args[0];
   const token = process.env.GITHUB_TOKEN;
@@ -50,7 +78,7 @@ export async function installCommand(context: CommandContext): Promise<number> {
   const extracted = await extractZipToStaging(downloaded.filePath, path.join(installRoot, "tmp"));
   const transaction = await installExtractedContent(extracted.extractedPath, installRoot);
 
-  const stateFilePath = getDefaultStateFilePath();
+  const stateFilePath = getStateFilePath();
   const state = await loadCliState(stateFilePath);
 
   state.installedServer = {
@@ -77,7 +105,7 @@ export async function installCommand(context: CommandContext): Promise<number> {
     const skillsResult = await syncSkillsRepository({
       repoUrl,
       ref,
-      destinationPath: getDefaultSkillsPath(),
+      destinationPath: getSkillsPath(),
     });
 
     syncedSkillsPath = skillsResult.destinationPath;

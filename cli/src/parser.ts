@@ -18,7 +18,7 @@ function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOption
 function parseValueFlag(
   args: string[],
   index: number,
-  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skillsRepo" | "skillsRef" | "skills">,
+  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skillsRepo" | "skillsRef" | "skills" | "agentType">,
   options: GlobalOptions
 ): number {
   const value = args[index + 1];
@@ -115,6 +115,11 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
     if (token === "--skills") {
       i = parseValueFlag(argv, i, "skills", options);
+      continue;
+    }
+
+    if (token === "--agent-type") {
+      i = parseValueFlag(argv, i, "agentType", options);
       continue;
     }
 

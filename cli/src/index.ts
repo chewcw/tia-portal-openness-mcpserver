@@ -2,6 +2,7 @@
 
 import { dispatchCommand } from "./commands/router.js";
 import { parseArgs } from "./parser.js";
+import { setAgentType } from "./services/agentPathResolver.js";
 
 const version = "0.1.0";
 
@@ -11,7 +12,7 @@ function printHelp(): void {
       "TIA Portal MCP Server CLI",
       "",
       "Usage:",
-      "  tia-mcp <command> [options]",
+      "  @bizarreaster/tia-portal-openness-mcpserver <command> [options]",
       "",
       "Commands:",
       "  install      Install latest or selected server release",
@@ -34,6 +35,7 @@ function printHelp(): void {
       "  --skills <name[,name...]>",
       "  --all",
       "  --verbose",
+      "  --agent-type <opencode|claude|cursor|generic>",
     ].join("\n") + "\n"
   );
 }
@@ -46,9 +48,17 @@ async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (argv.length === 0 || parsed.options.help) {
+  // Show general help if no command is provided or if help flag is provided without a command
+  if (argv.length === 0 || (parsed.options.help && !parsed.name)) {
     printHelp();
     return 0;
+  }
+
+  // If help flag is provided with a command, let the command handler deal with it
+  // (we don't return here, we let dispatchCommand handle it)
+
+  if (parsed.options.agentType) {
+    setAgentType(parsed.options.agentType as "opencode" | "claude" | "cursor" | "generic");
   }
 
   return dispatchCommand({ parsed });

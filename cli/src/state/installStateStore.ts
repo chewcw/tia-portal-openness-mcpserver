@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CliState, createEmptyState, isCliState } from "./schema.js";
+import { getStateFilePath } from "../services/agentPathResolver.js";
 
 export function getDefaultStateFilePath(): string {
-  const appData = process.env.APPDATA ?? path.join(process.env.USERPROFILE ?? process.cwd(), "AppData", "Roaming");
-  return path.join(appData, "TiaPortalMcpServerCli", "state", "cli-state.json");
+  return getStateFilePath();
 }
 
 export async function loadCliState(filePath: string): Promise<CliState> {

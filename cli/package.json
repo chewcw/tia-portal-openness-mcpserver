@@ -1,7 +1,7 @@
 {
-  "name": "@tiaportal/mcp-server-cli",
+  "name": "@bizarreaster/tia-openness-mcpserver",
   "version": "0.1.0",
-  "description": "TypeScript CLI to install and manage TIA Portal MCP Server releases",
+  "description": "CLI to install and manage TIA Portal MCP Server releases",
   "license": "MIT",
   "private": true,
   "type": "module",

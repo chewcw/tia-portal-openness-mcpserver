@@ -7,7 +7,30 @@ import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 import { getDefaultStateFilePath, loadCliState, saveCliState } from "../state/installStateStore.js";
 import { SCHEMA_VERSION } from "../state/schema.js";
 
+function printUpdateHelp(): void {
+  process.stdout.write(
+    [
+      "Update existing installation",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver update [options] [version]",
+      "",
+      "Arguments:",
+      "  version  Specific version to update to (defaults to latest)",
+      "",
+      "Options:",
+      "  --server-version <tag>  Specific version to update to",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
+
 export async function updateCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printUpdateHelp();
+    return 0;
+  }
   const stateFilePath = getDefaultStateFilePath();
   const state = await loadCliState(stateFilePath);
 

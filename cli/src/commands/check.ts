@@ -3,7 +3,26 @@ import { access } from "node:fs/promises";
 import { ensureGitAvailable } from "../services/prereqCheck.js";
 import { getDefaultStateFilePath, loadCliState } from "../state/installStateStore.js";
 
+function printCheckHelp(): void {
+  process.stdout.write(
+    [
+      "Run local prerequisite checks",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver check [options]",
+      "",
+      "Options:",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
+
 export async function checkCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printCheckHelp();
+    return 0;
+  }
   void context;
 
   const stateFilePath = getDefaultStateFilePath();

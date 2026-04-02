@@ -10,6 +10,7 @@ export interface GlobalOptions {
   skillsRepo?: string;
   skillsRef?: string;
   skills?: string[];
+  agentType?: string;
 }
 
 export interface ParsedCommand {

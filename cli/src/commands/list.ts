@@ -1,7 +1,26 @@
 import { CommandContext } from "../types.js";
 import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 
+function printListHelp(): void {
+  process.stdout.write(
+    [
+      "List available server releases",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserver list [options]",
+      "",
+      "Options:",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
+
 export async function listCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printListHelp();
+    return 0;
+  }
   const repository = getRepositoryFromEnv();
   const token = process.env.GITHUB_TOKEN;
   const client = new ReleaseClient({

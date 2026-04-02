@@ -3,7 +3,29 @@ import { access } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { getDefaultStateFilePath, loadCliState } from "../state/installStateStore.js";
 
+function printRunHelp(): void {
+  process.stdout.write(
+    [
+      "Launch installed server",
+      "",
+      "Usage:",
+      "  @bizarreaster/tia-portal-openness-mcpserverrun [options] [server-args...]",
+      "",
+      "Arguments:",
+      "  server-args  Arguments to pass to the server executable",
+      "",
+      "Options:",
+      "  --help                  Show help",
+      "  --version               Show version",
+    ].join("\n") + "\n"
+  );
+}
+
 export async function runCommand(context: CommandContext): Promise<number> {
+  if (context.parsed.options.help) {
+    printRunHelp();
+    return 0;
+  }
   void context;
 
   const stateFilePath = getDefaultStateFilePath();
