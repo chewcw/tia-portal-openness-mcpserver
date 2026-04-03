@@ -6,10 +6,6 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   cli-publish:
     name: Publish CLI to npm
@@ -17,6 +13,10 @@ jobs:
     defaults:
       run:
         working-directory: cli
+
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout
