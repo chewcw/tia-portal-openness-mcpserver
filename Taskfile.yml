@@ -12,6 +12,14 @@ tasks:
     cli:test:
         cmds:
             - cd cli && npm run test
+    cli:publish:dry:
+        desc: Dry-run npm publish
+        cmds:
+            - cd cli && npm publish --dry-run
+    cli:publish:
+        desc: Publish CLI to npm
+        cmds:
+            - cd cli && npm publish --access public
     inspector:
         cmds:
             - npx @modelcontextprotocol/inspector dotnet run --project TiaPortalMcpServer/TiaPortalMcpServer.csproj

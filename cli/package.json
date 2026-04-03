@@ -1,12 +1,25 @@
 {
-  "name": "@bizarreaster/tia-openness-mcpserver",
+  "name": "@bizarreaster/tia-portal-openness-mcpserver",
   "version": "0.0.3",
   "description": "CLI to install and manage TIA Portal MCP Server releases",
   "license": "MIT",
-  "private": true,
-  "type": "module",
+  "main": "dist/index.js",
   "bin": {
     "tia-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bizarreaster/tia-portal-openness-mcpserver.git"
+  },
+  "homepage": "https://github.com/bizarreaster/tia-portal-openness-mcpserver#readme",
+  "bugs": {
+    "url": "https://github.com/bizarreaster/tia-portal-openness-mcpserver/issues"
   },
   "engines": {
     "node": ">=20"
@@ -17,6 +30,7 @@
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "prepublishOnly": "npm run build",
     "prepare": "cd .. && husky"
   },
   "dependencies": {
