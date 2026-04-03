@@ -6,21 +6,23 @@ MCP (Model Context Protocol) server for Siemens TIA Portal Openness, plus a comp
 
 - `TiaPortalMcpServer/`: C# MCP server (target framework: `net48`) exposing TIA Portal engineering operations as MCP tools.
 - `TiaPortalMcpServer.Tests/`: unit and integration tests for tool contracts and server behavior.
-- `cli/`: TypeScript CLI for listing, downloading, installing, updating, and running server releases.
+- `cli/`: TypeScript CLI for installing server releases and managing companion skills.
 
 ## Key capabilities
 
 The server provides tool groups for:
 
-- project lifecycle (`projects_create`, `projects_open`, `projects_save`, `projects_close`)
-- hardware and device management (`devices_list`, `devices_create`, `devices_search_catalog`)
-- device item management (`deviceitems_list`, `deviceitems_get_attributes`, `deviceitems_delete`)
+- project lifecycle (`projects_create`, `projects_open`, `projects_open_with_upgrade`, `projects_save`, `projects_close`, `projects_get_session_info`)
+- hardware and device management (`devices_list`, `devices_create`, `devices_delete`, `devices_get_attributes`, `devices_set_attribute`, `devices_get_app_id`, `devices_set_app_id`, `devices_search_catalog`)
+- device item management (`deviceitems_list`, `deviceitems_get_attributes`, `deviceitems_plug_move`, `deviceitems_copy`, `deviceitems_delete`, `catalog_search_device_items`)
 - PLC software and block operations (`software_add_block`, `blocks_list`, `software_get_block_hierarchy`)
-- tag and tag-table management (`tags_create`, `tags_tagtable_create`, `tags_group_create`)
+- tag and tag-table management (`tags_create`, `tags_list`, `tags_tagtable_create`, `tags_tagtable_list`, `tags_tagtable_get`, `tags_tagtable_delete`, `tags_tagtable_export`, `tags_tagtable_open_editor`, `tags_group_create`, `tags_group_list`, `tags_group_find`, `tags_group_delete`, `tags_group_system_get`, `tags_constants_user_list`, `tags_constants_system_list`)
+- advanced block operations (external sources, ProDiag, UDTs, types, editor helpers — 19 tools in `BlocksTools`)
 - compilation (`compilation_project`, `compilation_software`)
-- file import and validation (`files_read_csv`, `files_read_excel`, `files_validate_format`)
-- external source handling and ProDiag support (in `BlocksTools`)
-- elicitation and utility helpers (`utilities_elicit_user_input`, project/library metadata tools)
+- file import and validation (`files_read_csv`, `files_read_excel`, `files_list_sheets`, `files_validate_format`, `files_get_info`)
+- HMI targets (`hmi_targets_list`, `hmi_targets_get`, `hmi_targets_validate`)
+- sampling/LLM-assisted operations (`sampling_generate_code`, `sampling_summarize_project`, `sampling_get_suggestions`)
+- elicitation and utility helpers (`utilities_elicit_user_input`, `utilities_get_project_info`, `utilities_list_libraries`)
 
 All active tools are declared in `TiaPortalMcpServer/Tools/`.
 
@@ -76,15 +78,18 @@ npx @modelcontextprotocol/inspector dotnet run --project TiaPortalMcpServer/TiaP
 The companion CLI is in `cli/` and is intended for npm/`npx` workflows.
 
 ```bash
-npx @bizarreaster/tia-portal-openness-mcpserver list
 npx @bizarreaster/tia-portal-openness-mcpserver install --server-version v1.0.0
-npx @bizarreaster/tia-portal-openness-mcpserver update
+npx @bizarreaster/tia-portal-openness-mcpserver skills install --skills siemens-awl-stl-programmer --agent-type opencode
 ```
 
-Release discovery variables used by the CLI:
+Environment variables used by the CLI:
 
 - `GITHUB_TOKEN` (optional): token for authenticated GitHub API access.
-- `TIA_MCP_SKILLS_REPO` (optional): default companion skills repository.
+- `TIA_MCP_INSTALL_DIR` (optional): override default install directory.
+- `TIA_MCP_AGENT_TYPE` (optional): override agent type detection.
+- `TIA_MCP_SKILLS_PATH` (optional): override skills installation path.
+
+The CLI auto-detects the agent type from `OPENCODE_SESSION_ID`, `OPENCODE_ROOT`, `CLAUDE_AGENT_METADATA_FILE`, or `CURSOR_SESSION_ID`.
 
 See `cli/README.md` for full CLI contract and options.
 

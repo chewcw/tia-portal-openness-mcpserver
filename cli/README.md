@@ -29,47 +29,6 @@ Install latest or selected server release.
 tia-mcp install
 tia-mcp install --server-version v1.0.0
 tia-mcp install --install-dir /custom/path
-tia-mcp install --yes
-```
-
-### `download`
-
-Download a release asset without activating install.
-
-```bash
-tia-mcp download --server-version v1.0.0
-```
-
-### `list`
-
-List available GitHub releases.
-
-```bash
-tia-mcp list
-```
-
-### `check`
-
-Run local prerequisite checks.
-
-```bash
-tia-mcp check
-```
-
-### `update`
-
-Update existing install with rollback safety.
-
-```bash
-tia-mcp update
-```
-
-### `run`
-
-Launch currently installed server.
-
-```bash
-tia-mcp run
 ```
 
 ### `skills`
@@ -77,8 +36,17 @@ tia-mcp run
 Manage companion skills.
 
 ```bash
-tia-mcp skills install --skills <name> --agent-type opencode
+tia-mcp skills install --skills <name[,name...]> --agent-type <type>
 ```
+
+Available skills:
+
+| Skill | Description |
+| --- | --- |
+| `siemens-awl-stl-programmer` | Generate Siemens S7 STL/AWL PLC programs |
+| `siemens-tia-portal-integrator` | Orchestrate TIA Portal data-driven workflows |
+
+Supported agent types: `opencode`, `claude`, `cursor`, `generic`.
 
 ## Global Options
 
@@ -86,21 +54,10 @@ tia-mcp skills install --skills <name> --agent-type opencode
 | --- | --- |
 | `--server-version <tag>` | Explicit server release tag |
 | `--install-dir <path>` | Override default install root |
-| `--skills-repo <url>` | Companion skills repository URL |
-| `--skills-ref <ref>` | Tag, branch, or commit for companion skills |
-| `--skills <name[,name...]>` | Sync specific skills |
-| `--all` | Sync all available skills |
-| `--yes` | Accept defaults for interactive prompts |
-| `--non-interactive` | Disable prompts, require explicit flags |
-| `--verbose` | Enable verbose diagnostics output |
+| `--skills <name[,name...]>` | Comma-separated list of skills to install |
+| `--agent-type <type>` | Target agent type for skills: `opencode`, `claude`, `cursor`, or `generic` |
 | `--help` | Show help |
 | `--version` | Show CLI version |
-
-## Interactive Behavior
-
-- Interactive mode is enabled by default
-- During install, the CLI prompts for install directory, optional companion skills sync, and skills repo/ref
-- Non-interactive mode (`--yes` / `--non-interactive`) fails fast when required values are missing
 
 ## Installation Location
 
@@ -108,8 +65,14 @@ Default: per-user AppData at `%APPDATA%/TiaPortalMcpServerCli/server`
 
 ## Environment Variables
 
-- `GITHUB_TOKEN` (optional): Token for authenticated GitHub API access
-- `TIA_MCP_SKILLS_REPO` (optional): Default companion skills repository URL
+| Variable | Description |
+| --- | --- |
+| `GITHUB_TOKEN` | Token for authenticated GitHub API access |
+| `TIA_MCP_INSTALL_DIR` | Override default install directory |
+| `TIA_MCP_AGENT_TYPE` | Override agent type detection (`opencode`, `claude`, `cursor`, `generic`) |
+| `TIA_MCP_SKILLS_PATH` | Override skills installation path |
+
+The CLI also auto-detects the agent type from runtime environment variables (`OPENCODE_SESSION_ID`, `CLAUDE_AGENT_METADATA_FILE`, `CURSOR_SESSION_ID`).
 
 ## License
 
