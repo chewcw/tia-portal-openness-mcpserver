@@ -37,6 +37,15 @@ describe("parseArgs", () => {
     expect(parsed.options.agentType).toBe("opencode");
   });
 
+  it("parses comma-separated agent-type values", () => {
+    const parsed = parseArgs(["skills", "install", "--skills", "siemens-stl-awl-programmer", "--agent-type", "generic, claude"]);
+
+    expect(parsed.name).toBe("skills");
+    expect(parsed.args).toEqual(["install"]);
+    expect(parsed.options.skills).toBe("siemens-stl-awl-programmer");
+    expect(parsed.options.agentType).toBe("generic, claude");
+  });
+
   it("throws for empty --skills value", () => {
     expect(() => parseArgs(["skills", "install", "--skills", ""]))
       .toThrow("Missing value for flag --skills");

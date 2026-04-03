@@ -134,6 +134,42 @@ describe("skillsCommand", () => {
     stdoutSpy.mockRestore();
   });
 
+  it("install succeeds with multiple agent types", async () => {
+    const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    const result = await skillsCommand({
+      parsed: {
+        name: "skills",
+        args: ["install"],
+        options: baseOptions({
+          skills: "siemens-awl-stl-programmer",
+          agentType: "generic, claude",
+        }),
+      },
+    });
+
+    expect(result).toBe(0);
+    expect(mocks.setAgentTypeMock).toHaveBeenCalledTimes(2);
+    expect(mocks.setAgentTypeMock).toHaveBeenNthCalledWith(1, "generic");
+    expect(mocks.setAgentTypeMock).toHaveBeenNthCalledWith(2, "claude");
+    expect(mocks.syncSkillsRepositoryMock).toHaveBeenCalledTimes(2);
+    expect(mocks.syncSkillsRepositoryMock).toHaveBeenNthCalledWith(1, {
+      repoUrl: "https://github.com/chewcw/agent-skills",
+      ref: "main",
+      destinationPath: "C:/generic-skills",
+      sparsePaths: ["siemens-awl-stl-programmer"],
+    });
+    expect(mocks.syncSkillsRepositoryMock).toHaveBeenNthCalledWith(2, {
+      repoUrl: "https://github.com/chewcw/agent-skills",
+      ref: "main",
+      destinationPath: "C:/claude-skills",
+      sparsePaths: ["siemens-awl-stl-programmer"],
+    });
+    expect(mocks.saveSkillsManifestMock).toHaveBeenCalledTimes(2);
+
+    stdoutSpy.mockRestore();
+  });
+
   it("install works without explicit subcommand", async () => {
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
