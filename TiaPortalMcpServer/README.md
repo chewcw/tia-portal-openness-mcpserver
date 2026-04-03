@@ -73,8 +73,6 @@ npx @tiaportal/mcp-server-cli install --server-version v1.0.0
 npx @tiaportal/mcp-server-cli update
 ```
 
-Set `TIA_MCP_GITHUB_REPOSITORY` to the GitHub repository in `owner/repo` format before using release-based commands.
-
 ## Tools Available
 
 ### Project Management

@@ -21,9 +21,9 @@ describe("parseArgs", () => {
   });
 
   it("accepts command in any token position", () => {
-    const parsed = parseArgs(["--verbose", "list"]);
+    const parsed = parseArgs(["--verbose", "install"]);
 
-    expect(parsed.name).toBe("list");
+    expect(parsed.name).toBe("install");
     expect(parsed.options.verbose).toBe(true);
   });
 

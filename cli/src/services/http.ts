@@ -19,6 +19,9 @@ export async function getJson<T>(url: string, options: HttpJsonOptions = {}): Pr
 
   if (!response.ok) {
     const body = await response.text();
+    if (response.status === 401) {
+      throw new Error(`HTTP 401 for ${url}: Authentication required. Set GITHUB_TOKEN environment variable with a valid GitHub personal access token (public_repo scope for public repositories).`);
+    }
     throw new Error(`HTTP ${response.status} for ${url}: ${body}`);
   }
 

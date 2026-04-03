@@ -1,16 +1,15 @@
-import { CommandContext } from "../types.js";
-import os from "node:os";
 import path from "node:path";
+import { CommandContext } from "../types.js";
+import { saveServerManifest, resolveInstallDir, SERVER_MANIFEST_VERSION } from "../state/serverManifest.js";
+import { saveSkillsManifest, resolveSkillsManifestPath } from "../state/skillsManifest.js";
 import { downloadAsset } from "../services/downloader.js";
 import { extractZipToStaging } from "../services/extract.js";
 import { installExtractedContent } from "../services/installTransaction.js";
 import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 import { syncSkillsRepository } from "../services/skillsRepo.js";
-import { loadCliState, saveCliState } from "../state/installStateStore.js";
-import { saveSkillsState } from "../state/skillsStateStore.js";
-import { SCHEMA_VERSION } from "../state/schema.js";
 import { collectInstallPromptResult } from "../ui/prompts.js";
-import { getSkillsPath, getStateFilePath } from "../services/agentPathResolver.js";
+import { detectAgentType, getSkillsPath, setAgentType } from "../services/agentPathResolver.js";
+import { COMMON_SKILLS_REPO } from "../constants.js";
 
 function printInstallHelp(): void {
   process.stdout.write(
@@ -40,18 +39,13 @@ function printInstallHelp(): void {
   );
 }
 
-function getDefaultInstallRoot(): string {
-  const appData = process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-  return path.join(appData, "TiaPortalMcpServerCli", "server");
-}
-
 export async function installCommand(context: CommandContext): Promise<number> {
   if (context.parsed.options.help) {
     printInstallHelp();
     return 0;
   }
   const repository = getRepositoryFromEnv();
-  const version = context.parsed.options.serverVersion ?? context.parsed.args[0];
+  const versionFromArgs = context.parsed.options.serverVersion ?? context.parsed.args[0];
   const token = process.env.GITHUB_TOKEN;
 
   const releaseClient = new ReleaseClient({
@@ -59,82 +53,97 @@ export async function installCommand(context: CommandContext): Promise<number> {
     ...(token ? { token } : {}),
   });
 
-  const release = await releaseClient.resolveRelease(version);
+  const latestRelease = versionFromArgs
+    ? undefined
+    : await releaseClient.resolveRelease().catch(() => undefined);
+
+  const hasExplicitOptions =
+    context.parsed.options.serverVersion !== undefined ||
+    context.parsed.options.installDir !== undefined ||
+    context.parsed.options.skillsRepo !== undefined ||
+    context.parsed.options.skillsRef !== undefined ||
+    context.parsed.options.skills !== undefined ||
+    context.parsed.options.allSkills ||
+    context.parsed.options.agentType !== undefined ||
+    context.parsed.args.length > 0;
+
   const promptResult = await collectInstallPromptResult({
-    installDirDefault: getDefaultInstallRoot(),
-    skillsRefDefault: release.tagName,
-    nonInteractive: context.parsed.options.nonInteractive,
+    installDirDefault: resolveInstallDir(),
+    skillsRefDefault: latestRelease?.tagName ?? "main",
+    nonInteractive: context.parsed.options.nonInteractive || hasExplicitOptions,
     yes: context.parsed.options.yes,
-    ...(process.env.TIA_MCP_SKILLS_REPO ? { skillsRepoDefault: process.env.TIA_MCP_SKILLS_REPO } : {}),
+    detectedAgentType: detectAgentType(),
+    ...(context.parsed.options.agentType ? { agentTypeFromOption: context.parsed.options.agentType } : {}),
+    ...(latestRelease ? { latestServerVersion: latestRelease.tagName } : {}),
+    ...(versionFromArgs ? { serverVersionFromOption: versionFromArgs } : {}),
     ...(context.parsed.options.installDir ? { installDirFromOption: context.parsed.options.installDir } : {}),
-    ...(context.parsed.options.skillsRepo ? { skillsRepoFromOption: context.parsed.options.skillsRepo } : {}),
-    ...(context.parsed.options.skillsRef ? { skillsRefFromOption: context.parsed.options.skillsRef } : {}),
+    ...(context.parsed.options.skills ? { skillsFromOption: context.parsed.options.skills } : {}),
+    allSkillsFromOption: context.parsed.options.allSkills,
   });
+
+  setAgentType(promptResult.agentType);
+
+  if (!promptResult.serverVersion) {
+    throw new Error("Server version is required. Use --server-version or specify in prompt.");
+  }
+
+  const version = promptResult.serverVersion;
+  const normalizedVersion = version.startsWith('v') ? version : `v${version}`;
+
+  const asset = {
+    name: `TiaPortalMcpServer-${normalizedVersion}.zip`,
+    browserDownloadUrl: `https://github.com/${repository}/releases/download/${normalizedVersion}/TiaPortalMcpServer-${normalizedVersion}.zip`,
+    size: 0,
+  };
 
   const installRoot = promptResult.installDir;
 
-  const asset = releaseClient.resolveAsset(release);
   const downloaded = await downloadAsset(asset, path.join(installRoot, "downloads"));
   const extracted = await extractZipToStaging(downloaded.filePath, path.join(installRoot, "tmp"));
   const transaction = await installExtractedContent(extracted.extractedPath, installRoot);
 
-  const stateFilePath = getStateFilePath();
-  const state = await loadCliState(stateFilePath);
+  const executablePath = path.join(transaction.activePath, "TiaPortalMcpServer.exe");
 
-  state.installedServer = {
-    schemaVersion: SCHEMA_VERSION,
-    serverVersion: release.tagName,
-    installPath: transaction.activePath,
-    executablePath: path.join(transaction.activePath, "TiaPortalMcpServer.exe"),
+  await saveServerManifest({
+    schemaVersion: SERVER_MANIFEST_VERSION,
+    serverVersion: normalizedVersion,
     installedAtUtc: new Date().toISOString(),
-    ...(transaction.rollbackPath ? { rollbackCachePath: transaction.rollbackPath } : {}),
-  };
-
-  await saveCliState(stateFilePath, state);
+  }, installRoot);
 
   let syncedSkillsPath: string | undefined;
 
-  if (promptResult.shouldSyncSkills) {
-    const repoUrl = promptResult.skillsRepo?.trim();
-    const ref = promptResult.skillsRef?.trim() ?? release.tagName;
-
-    if (!repoUrl) {
-      throw new Error("Skills sync selected but no skills repository URL was provided.");
-    }
+  if (promptResult.selectedSkills.length > 0) {
+    const repoUrl = promptResult.skillsRepo ?? COMMON_SKILLS_REPO;
+    const ref = promptResult.skillsRef ?? "main";
+    const sparsePaths = promptResult.selectedSkills.map(s => s);
 
     const skillsResult = await syncSkillsRepository({
       repoUrl,
       ref,
       destinationPath: getSkillsPath(),
+      sparsePaths,
     });
 
     syncedSkillsPath = skillsResult.destinationPath;
 
-    await saveSkillsState(
-      {
-        schemaVersion: SCHEMA_VERSION,
-        repoUrl,
-        ref,
-        localPath: skillsResult.destinationPath,
-        selectedSkills: ["all"],
-        selectedPaths: ["."],
-        syncedAtUtc: new Date().toISOString(),
-        serverVersion: release.tagName,
-      },
-      stateFilePath
-    );
+    const skillsManifestPath = await saveSkillsManifest({
+      schemaVersion: 1,
+      repoUrl,
+      ref,
+      selectedSkills: promptResult.selectedSkills,
+      syncedAtUtc: new Date().toISOString(),
+      serverVersion: normalizedVersion,
+    });
   }
 
   process.stdout.write(
     [
       `repository=${repository}`,
-      `tag=${release.tagName}`,
+      `tag=${normalizedVersion}`,
       `asset=${asset.name}`,
       `installed=${transaction.activePath}`,
-      `state=${stateFilePath}`,
-      `skills_selected=${promptResult.shouldSyncSkills}`,
-      ...(promptResult.skillsRepo ? [`skills_repo=${promptResult.skillsRepo}`] : []),
-      ...(promptResult.skillsRef ? [`skills_ref=${promptResult.skillsRef}`] : []),
+      `executable=${executablePath}`,
+      `skills_selected=${promptResult.selectedSkills.join(',')}`,
       ...(syncedSkillsPath ? [`skills_path=${syncedSkillsPath}`] : []),
     ].join("\n") + "\n"
   );

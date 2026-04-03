@@ -1,10 +1,31 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { dispatchCommand } from "./commands/router.js";
 import { parseArgs } from "./parser.js";
 import { setAgentType } from "./services/agentPathResolver.js";
 
-const version = "0.1.0";
+function findPackageJson(startDir: string): string {
+  let currentDir = startDir;
+  while (currentDir !== dirname(currentDir)) {
+    const candidate = join(currentDir, "package.json");
+    try {
+      readFileSync(candidate);
+      return candidate;
+    } catch {
+      currentDir = dirname(currentDir);
+    }
+  }
+  throw new Error("package.json not found");
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = findPackageJson(__dirname);
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+const version = packageJson.version;
 
 function printHelp(): void {
   process.stdout.write(
@@ -16,11 +37,6 @@ function printHelp(): void {
       "",
       "Commands:",
       "  install      Install latest or selected server release",
-      "  download     Download a release asset",
-      "  list         List available server releases",
-      "  check        Run local prerequisite checks",
-      "  update       Update existing installation",
-      "  run          Launch installed server",
       "  skills       Manage companion skills",
       "",
       "Global options:",

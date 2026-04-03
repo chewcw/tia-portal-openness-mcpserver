@@ -4,9 +4,10 @@ const mocks = vi.hoisted(() => ({
   readdirMock: vi.fn(),
   syncSkillsRepositoryMock: vi.fn(),
   listDirectoryEntriesAtRefMock: vi.fn(),
-  getDefaultStateFilePathMock: vi.fn(() => "C:/state/cli-state.json"),
-  loadCliStateMock: vi.fn(),
-  saveSkillsStateMock: vi.fn(),
+  getSkillsPathMock: vi.fn(() => "C:/skills"),
+  loadSkillsManifestMock: vi.fn(),
+  saveSkillsManifestMock: vi.fn(),
+  loadServerManifestMock: vi.fn(),
 }));
 
 vi.mock("node:fs/promises", () => ({
@@ -18,13 +19,18 @@ vi.mock("../src/services/skillsRepo.js", () => ({
   listDirectoryEntriesAtRef: mocks.listDirectoryEntriesAtRefMock,
 }));
 
-vi.mock("../src/state/installStateStore.js", () => ({
-  getDefaultStateFilePath: mocks.getDefaultStateFilePathMock,
-  loadCliState: mocks.loadCliStateMock,
+vi.mock("../src/state/skillsManifest.js", () => ({
+  loadSkillsManifest: mocks.loadSkillsManifestMock,
+  saveSkillsManifest: mocks.saveSkillsManifestMock,
+  SKILLS_MANIFEST_VERSION: 1,
 }));
 
-vi.mock("../src/state/skillsStateStore.js", () => ({
-  saveSkillsState: mocks.saveSkillsStateMock,
+vi.mock("../src/state/serverManifest.js", () => ({
+  loadServerManifest: mocks.loadServerManifestMock,
+}));
+
+vi.mock("../src/services/agentPathResolver.js", () => ({
+  getSkillsPath: mocks.getSkillsPathMock,
 }));
 
 import { skillsCommand } from "../src/commands/skills.js";
@@ -52,7 +58,7 @@ describe("skillsCommand", () => {
   });
 
   it("status reports when skills metadata is missing", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({ schemaVersion: 1 });
+    mocks.loadSkillsManifestMock.mockResolvedValue(null);
 
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
@@ -71,18 +77,13 @@ describe("skillsCommand", () => {
   });
 
   it("status prints persisted metadata", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({
+    mocks.loadSkillsManifestMock.mockResolvedValue({
       schemaVersion: 1,
-      skills: {
-        schemaVersion: 1,
-        repoUrl: "https://github.com/acme/skills",
-        ref: "main",
-        localPath: "C:/skills",
-        selectedSkills: ["a", "b"],
-        selectedPaths: ["siemens/a", "siemens/b"],
-        syncedAtUtc: "2026-03-31T00:00:00.000Z",
-        serverVersion: "v1.2.3",
-      },
+      repoUrl: "https://github.com/acme/skills",
+      ref: "main",
+      selectedSkills: ["a", "b"],
+      syncedAtUtc: "2026-03-31T00:00:00.000Z",
+      serverVersion: "v1.2.3",
     });
 
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
@@ -102,25 +103,18 @@ describe("skillsCommand", () => {
   });
 
   it("sync resolves repo and ref precedence from flags", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({
+    mocks.loadSkillsManifestMock.mockResolvedValue({
       schemaVersion: 1,
-      installedServer: {
-        schemaVersion: 1,
-        serverVersion: "v9.9.9",
-        installPath: "C:/server/current",
-        executablePath: "C:/server/current/TiaPortalMcpServer.exe",
-        installedAtUtc: "2026-03-31T00:00:00.000Z",
-      },
-      skills: {
-        schemaVersion: 1,
-        repoUrl: "https://github.com/old/repo",
-        ref: "old-ref",
-        localPath: "C:/skills",
-        selectedSkills: ["old"],
-        selectedPaths: ["siemens/old"],
-        syncedAtUtc: "2026-03-30T00:00:00.000Z",
-        serverVersion: "v1.0.0",
-      },
+      repoUrl: "https://github.com/old/repo",
+      ref: "old-ref",
+      selectedSkills: ["old"],
+      syncedAtUtc: "2026-03-30T00:00:00.000Z",
+      serverVersion: "v1.0.0",
+    });
+    mocks.loadServerManifestMock.mockResolvedValue({
+      schemaVersion: 1,
+      serverVersion: "v9.9.9",
+      installedAtUtc: "2026-03-31T00:00:00.000Z",
     });
 
     mocks.listDirectoryEntriesAtRefMock.mockResolvedValue(["alpha", "beta"]);
@@ -138,45 +132,38 @@ describe("skillsCommand", () => {
     });
 
     expect(result).toBe(0);
-    expect(mocks.listDirectoryEntriesAtRefMock).toHaveBeenCalledWith("C:/skills", "feature/ref", "siemens");
+    expect(mocks.listDirectoryEntriesAtRefMock).toHaveBeenCalledWith("C:/skills", "feature/ref");
     expect(mocks.syncSkillsRepositoryMock).toHaveBeenNthCalledWith(2, {
       repoUrl: "https://github.com/new/repo",
       ref: "feature/ref",
       destinationPath: "C:/skills",
-      sparsePaths: ["siemens/alpha", "siemens/beta"],
+      sparsePaths: ["alpha", "beta"],
     });
   });
 
   it("sync falls back to installed server version when no ref provided", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({
+    mocks.loadSkillsManifestMock.mockResolvedValue({
       schemaVersion: 1,
-      installedServer: {
-        schemaVersion: 1,
-        serverVersion: "v2.1.0",
-        installPath: "C:/server/current",
-        executablePath: "C:/server/current/TiaPortalMcpServer.exe",
-        installedAtUtc: "2026-03-31T00:00:00.000Z",
-      },
-      skills: {
-        schemaVersion: 1,
-        repoUrl: "https://github.com/acme/skills",
-        ref: "main",
-        localPath: "C:/skills",
-        selectedSkills: ["a"],
-        selectedPaths: ["siemens/a"],
-        syncedAtUtc: "2026-03-30T00:00:00.000Z",
-        serverVersion: "v1.0.0",
-      },
+      repoUrl: "https://github.com/acme/skills",
+      ref: "main",
+      selectedSkills: ["a"],
+      syncedAtUtc: "2026-03-30T00:00:00.000Z",
+      serverVersion: "v1.0.0",
+    });
+    mocks.loadServerManifestMock.mockResolvedValue({
+      schemaVersion: 1,
+      serverVersion: "v2.1.0",
+      installedAtUtc: "2026-03-31T00:00:00.000Z",
     });
 
     mocks.listDirectoryEntriesAtRefMock.mockResolvedValue(["alpha"]);
 
     const result = await skillsCommand({
       parsed: {
-        name: "skills",
+        name: "sync",
         args: ["sync"],
         options: baseOptions({
-          skillsRepo: "https://github.com/acme/skills/tree/main/siemens",
+          skillsRepo: "https://github.com/acme/skills/tree/main",
           skillsRef: "",
         }),
       },
@@ -191,18 +178,13 @@ describe("skillsCommand", () => {
   });
 
   it("sync rejects unknown skill names", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({
+    mocks.loadSkillsManifestMock.mockResolvedValue({
       schemaVersion: 1,
-      skills: {
-        schemaVersion: 1,
-        repoUrl: "https://github.com/acme/skills",
-        ref: "main",
-        localPath: "C:/skills",
-        selectedSkills: ["a"],
-        selectedPaths: ["siemens/a"],
-        syncedAtUtc: "2026-03-30T00:00:00.000Z",
-        serverVersion: "v1.0.0",
-      },
+      repoUrl: "https://github.com/acme/skills",
+      ref: "main",
+      selectedSkills: ["a"],
+      syncedAtUtc: "2026-03-30T00:00:00.000Z",
+      serverVersion: "v1.0.0",
     });
 
     mocks.listDirectoryEntriesAtRefMock.mockResolvedValue(["alpha", "beta"]);
@@ -218,24 +200,10 @@ describe("skillsCommand", () => {
     });
 
     expect(result).toBe(1);
-    expect(mocks.saveSkillsStateMock).not.toHaveBeenCalled();
+    expect(mocks.saveSkillsManifestMock).not.toHaveBeenCalled();
   });
 
   it("list returns discovered folders", async () => {
-    mocks.loadCliStateMock.mockResolvedValue({
-      schemaVersion: 1,
-      skills: {
-        schemaVersion: 1,
-        repoUrl: "https://github.com/acme/skills",
-        ref: "main",
-        localPath: "C:/skills",
-        selectedSkills: ["a"],
-        selectedPaths: ["siemens/a"],
-        syncedAtUtc: "2026-03-31T00:00:00.000Z",
-        serverVersion: "v1.2.3",
-      },
-    });
-
     mocks.readdirMock.mockResolvedValue([
       { isDirectory: () => true, name: "diag" },
       { isDirectory: () => true, name: "tia" },

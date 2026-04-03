@@ -2,11 +2,6 @@ import { GlobalOptions, ParsedCommand } from "./types.js";
 
 const KNOWN_COMMANDS = new Set([
   "install",
-  "download",
-  "list",
-  "check",
-  "update",
-  "run",
   "skills",
 ]);
 

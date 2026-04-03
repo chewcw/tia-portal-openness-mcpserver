@@ -83,7 +83,6 @@ npx @tiaportal/mcp-server-cli update
 
 Release discovery variables used by the CLI:
 
-- `TIA_MCP_GITHUB_REPOSITORY` (required): repository in `owner/repo` format.
 - `GITHUB_TOKEN` (optional): token for authenticated GitHub API access.
 - `TIA_MCP_SKILLS_REPO` (optional): default companion skills repository.
 

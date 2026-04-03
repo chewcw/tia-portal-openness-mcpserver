@@ -1,19 +1,9 @@
-import { checkCommand } from "./check.js";
-import { downloadCommand } from "./download.js";
 import { installCommand } from "./install.js";
-import { listCommand } from "./list.js";
-import { runCommand } from "./run.js";
 import { skillsCommand } from "./skills.js";
-import { updateCommand } from "./update.js";
 import { CommandContext, CommandHandler } from "../types.js";
 
 const COMMANDS: Record<string, CommandHandler> = {
   install: installCommand,
-  download: downloadCommand,
-  list: listCommand,
-  check: checkCommand,
-  update: updateCommand,
-  run: runCommand,
   skills: skillsCommand,
 };
 

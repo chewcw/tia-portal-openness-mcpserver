@@ -9,7 +9,7 @@ export function setAgentType(type: AgentType): void {
   cliAgentType = type;
 }
 
-function detectAgentType(): AgentType {
+export function detectAgentType(): AgentType {
   if (process.env.CLAUDE_AGENT_METADATA_FILE) {
     return "claude";
   }
@@ -47,20 +47,6 @@ export function resolveSkillsPath(agentType: AgentType): string {
   }
 }
 
-export function resolveStateFilePath(agentType: AgentType): string {
-  const home = os.homedir();
-  switch (agentType) {
-    case "opencode":
-      return path.join(home, ".config", "opencode", "tia-mcp-state.json");
-    case "claude":
-      return path.join(home, ".claude", "tia-mcp-state.json");
-    case "cursor":
-      return path.join(home, ".cursor", "tia-mcp-state.json");
-    case "generic":
-      return path.join(home, ".agents", "tia-mcp-state.json");
-  }
-}
-
 export function getSkillsPath(): string {
   const envPath = process.env.TIA_MCP_SKILLS_PATH;
   if (envPath && envPath.length > 0) {
@@ -68,13 +54,4 @@ export function getSkillsPath(): string {
   }
   const agentType = getAgentType();
   return resolveSkillsPath(agentType);
-}
-
-export function getStateFilePath(): string {
-  const envPath = process.env.TIA_MCP_STATE_PATH;
-  if (envPath && envPath.length > 0) {
-    return envPath;
-  }
-  const agentType = getAgentType();
-  return resolveStateFilePath(agentType);
 }

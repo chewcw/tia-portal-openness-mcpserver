@@ -41,10 +41,8 @@ This directory contains the TypeScript CLI used to install and manage TIA Portal
 - Default: per-user AppData at:
   - %APPDATA%/TiaPortalMcpServerCli/server
 
-### Update and rollback behavior contract
+### Update behavior
 - Updates are in-place and transactional.
-- Before activating a new install, the previous install is moved to a rollback cache.
-- If extraction, validation, or activation fails, rollback restores the previous install.
 
 ### Version mapping contract
 - CLI and server use independent semantic versioning.
@@ -54,4 +52,4 @@ This directory contains the TypeScript CLI used to install and manage TIA Portal
 ### Metadata contract
 - Install metadata and skills metadata are stored under:
   - %APPDATA%/TiaPortalMcpServerCli/state
-- Metadata includes installed server version, active install path, update timestamps, and rollback path.
+- Metadata includes installed server version, active install path, and update timestamps.

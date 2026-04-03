@@ -1,4 +1,5 @@
 import { getJson } from "./http.js";
+import { TIA_PORTAL_MCP_REPO } from "../constants.js";
 
 export interface ReleaseAsset {
   name: string;
@@ -113,21 +114,5 @@ export class ReleaseClient {
 }
 
 export function getRepositoryFromEnv(): string {
-  const fromCliEnv = process.env.TIA_MCP_GITHUB_REPOSITORY;
-  const fromGitHubEnv = process.env.GITHUB_REPOSITORY;
-  const rawValue = (fromCliEnv ?? fromGitHubEnv ?? "").trim();
-
-  const value = rawValue
-    .replace(/^https?:\/\/github\.com\//i, "")
-    .replace(/\.git$/i, "")
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "");
-
-  if (!value) {
-    throw new Error(
-      "Missing repository. Set TIA_MCP_GITHUB_REPOSITORY to owner/repo (for example: org/tia-portal-openness-mcpserver)."
-    );
-  }
-
-  return value;
+  return TIA_PORTAL_MCP_REPO;
 }
