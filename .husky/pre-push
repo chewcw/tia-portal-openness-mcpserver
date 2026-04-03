@@ -47,4 +47,9 @@ git add "$PACKAGE_JSON"
 if ! git diff --cached --quiet; then
   git commit --amend --no-edit --no-verify
   echo "Amended HEAD commit with updated version"
+
+  # Delete old tag and retag the amended commit
+  git tag -d "$TAG_NAME"
+  git tag "$TAG_NAME"
+  echo "Retagged $TAG_NAME on amended commit"
 fi
