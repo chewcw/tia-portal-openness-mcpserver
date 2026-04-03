@@ -1,6 +1,6 @@
 # TIA Portal MCP Server CLI
 
-CLI to install and manage [TIA Portal MCP Server](https://github.com/bizarreaster/tia-portal-openness-mcpserver) releases.
+CLI to install and manage [TIA Portal MCP Server](https://github.com/chewcw/tia-portal-openness-mcpserver) releases.
 
 ## Requirements
 

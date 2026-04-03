@@ -1,6 +1,6 @@
 {
   "name": "@bizarreaster/tia-portal-openness-mcpserver",
-  "version": "0.0.8",
+  "version": "0.0.2",
   "description": "CLI to install and manage TIA Portal MCP Server releases",
   "type": "module",
   "license": "MIT",
@@ -16,11 +16,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bizarreaster/tia-portal-openness-mcpserver.git"
+    "url": "git+https://github.com/chewcw/tia-portal-openness-mcpserver.git"
   },
-  "homepage": "https://github.com/bizarreaster/tia-portal-openness-mcpserver#readme",
+  "homepage": "https://github.com/chewcw/tia-portal-openness-mcpserver#readme",
   "bugs": {
-    "url": "https://github.com/bizarreaster/tia-portal-openness-mcpserver/issues"
+    "url": "https://github.com/chewcw/tia-portal-openness-mcpserver/issues"
   },
   "engines": {
     "node": ">=20"
