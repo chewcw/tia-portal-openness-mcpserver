@@ -13,26 +13,12 @@ function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOption
 function parseValueFlag(
   args: string[],
   index: number,
-  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skillsRepo" | "skillsRef" | "skills" | "agentType">,
+  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skills" | "agentType">,
   options: GlobalOptions
 ): number {
   const value = args[index + 1];
   if (!value || value.startsWith("-")) {
     throw new Error(`Missing value for flag ${args[index]}`);
-  }
-
-  if (key === "skills") {
-    const parsed = value
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
-    if (parsed.length === 0) {
-      throw new Error("Missing skill names for flag --skills");
-    }
-
-    options.skills = parsed;
-    return index + 1;
   }
 
   options[key] = value;
@@ -43,10 +29,6 @@ export function parseArgs(argv: string[]): ParsedCommand {
   const options: GlobalOptions = {
     help: false,
     version: false,
-    yes: false,
-    nonInteractive: false,
-    verbose: false,
-    allSkills: false,
   };
 
   let commandName: string | undefined;
@@ -68,26 +50,6 @@ export function parseArgs(argv: string[]): ParsedCommand {
       continue;
     }
 
-    if (token === "--yes") {
-      i = parseBooleanFlag(argv, i, "yes", options);
-      continue;
-    }
-
-    if (token === "--non-interactive") {
-      i = parseBooleanFlag(argv, i, "nonInteractive", options);
-      continue;
-    }
-
-    if (token === "--verbose") {
-      i = parseBooleanFlag(argv, i, "verbose", options);
-      continue;
-    }
-
-    if (token === "--all") {
-      i = parseBooleanFlag(argv, i, "allSkills", options);
-      continue;
-    }
-
     if (token === "--server-version") {
       i = parseValueFlag(argv, i, "serverVersion", options);
       continue;
@@ -95,16 +57,6 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
     if (token === "--install-dir") {
       i = parseValueFlag(argv, i, "installDir", options);
-      continue;
-    }
-
-    if (token === "--skills-repo") {
-      i = parseValueFlag(argv, i, "skillsRepo", options);
-      continue;
-    }
-
-    if (token === "--skills-ref") {
-      i = parseValueFlag(argv, i, "skillsRef", options);
       continue;
     }
 

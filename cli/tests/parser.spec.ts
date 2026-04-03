@@ -9,22 +9,18 @@ describe("parseArgs", () => {
       "v1.2.3",
       "--install-dir",
       "C:/tmp/server",
-      "--yes",
-      "--verbose",
     ]);
 
     expect(parsed.name).toBe("install");
     expect(parsed.options.serverVersion).toBe("v1.2.3");
     expect(parsed.options.installDir).toBe("C:/tmp/server");
-    expect(parsed.options.yes).toBe(true);
-    expect(parsed.options.verbose).toBe(true);
   });
 
   it("accepts command in any token position", () => {
-    const parsed = parseArgs(["--verbose", "install"]);
+    const parsed = parseArgs(["--server-version", "v1.0.0", "install"]);
 
     expect(parsed.name).toBe("install");
-    expect(parsed.options.verbose).toBe(true);
+    expect(parsed.options.serverVersion).toBe("v1.0.0");
   });
 
   it("throws for missing value flags", () => {
@@ -32,17 +28,17 @@ describe("parseArgs", () => {
       .toThrow("Missing value for flag --server-version");
   });
 
-  it("parses skills CSV and --all flags", () => {
-    const parsed = parseArgs(["skills", "sync", "--skills", "alpha,beta", "--all"]);
+  it("parses skills install with required options", () => {
+    const parsed = parseArgs(["skills", "install", "--skills", "siemens-stl-awl-programmer", "--agent-type", "opencode"]);
 
     expect(parsed.name).toBe("skills");
-    expect(parsed.args).toEqual(["sync"]);
-    expect(parsed.options.skills).toEqual(["alpha", "beta"]);
-    expect(parsed.options.allSkills).toBe(true);
+    expect(parsed.args).toEqual(["install"]);
+    expect(parsed.options.skills).toBe("siemens-stl-awl-programmer");
+    expect(parsed.options.agentType).toBe("opencode");
   });
 
   it("throws for empty --skills value", () => {
-    expect(() => parseArgs(["skills", "sync", "--skills", ",,"]))
-      .toThrow("Missing skill names for flag --skills");
+    expect(() => parseArgs(["skills", "install", "--skills", ""]))
+      .toThrow("Missing value for flag --skills");
   });
 });

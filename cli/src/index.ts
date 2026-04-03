@@ -5,7 +5,6 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { dispatchCommand } from "./commands/router.js";
 import { parseArgs } from "./parser.js";
-import { setAgentType } from "./services/agentPathResolver.js";
 
 function findPackageJson(startDir: string): string {
   let currentDir = startDir;
@@ -42,16 +41,8 @@ function printHelp(): void {
       "Global options:",
       "  --help       Show this help",
       "  --version    Show CLI version",
-      "  --yes        Accept prompt defaults",
-      "  --non-interactive  Disable prompts",
       "  --server-version <tag>",
       "  --install-dir <path>",
-      "  --skills-repo <url>",
-      "  --skills-ref <ref>",
-      "  --skills <name[,name...]>",
-      "  --all",
-      "  --verbose",
-      "  --agent-type <opencode|claude|cursor|generic>",
     ].join("\n") + "\n"
   );
 }
@@ -72,10 +63,6 @@ async function run(argv: string[]): Promise<number> {
 
   // If help flag is provided with a command, let the command handler deal with it
   // (we don't return here, we let dispatchCommand handle it)
-
-  if (parsed.options.agentType) {
-    setAgentType(parsed.options.agentType as "opencode" | "claude" | "cursor" | "generic");
-  }
 
   return dispatchCommand({ parsed });
 }
