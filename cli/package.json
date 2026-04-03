@@ -1,7 +1,8 @@
 {
   "name": "@bizarreaster/tia-portal-openness-mcpserver",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "CLI to install and manage TIA Portal MCP Server releases",
+  "type": "module",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": {
