@@ -37,7 +37,7 @@ jobs:
           VERSION="${VERSION#v}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add cli/package.json cli/package-lock.json
+          git add package.json package-lock.json
           git commit -m "Bump version to $VERSION" || echo "No changes to commit"
 
       - name: Push changes
