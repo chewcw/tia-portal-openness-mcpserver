@@ -31,8 +31,7 @@
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "npm run build",
-    "prepare": "cd .. && husky"
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.3.2",
@@ -40,7 +39,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "husky": "^9.1.7",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",

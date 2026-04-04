@@ -2,13 +2,14 @@ name: Release
 
 on:
   push:
-    tags:
+    branches:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 jobs:
   cli-publish:
@@ -21,6 +22,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Update CLI version
+        run: |
+          VERSION="${{ github.ref }}"
+          VERSION="${VERSION#refs/heads/}"
+          VERSION="${VERSION#v}"
+          cd cli
+          npm version --no-git-tag-version "$VERSION"
+
+      - name: Commit version updates
+        run: |
+          VERSION="${{ github.ref }}"
+          VERSION="${VERSION#refs/heads/}"
+          VERSION="${VERSION#v}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add cli/package.json cli/package-lock.json
+          git commit -m "Bump version to $VERSION" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          BRANCH="${{ github.ref }}"
+          BRANCH="${BRANCH#refs/heads/}"
+          git push origin "$BRANCH" || echo "Push may have failed, continuing..."
+
+      - name: Create Pull Request
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref }}"
+          BRANCH="${BRANCH#refs/heads/}"
+          VERSION="${BRANCH#v}"
+          gh pr create --base master --head "$BRANCH" --title "Release v$VERSION" --body "Release version $VERSION" 2>/dev/null || echo "PR may already exist"
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -62,6 +97,49 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Update .NET version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref }}".Replace("refs/heads/", "").TrimStart('v')
+          
+          foreach ($csproj in @("TiaPortalMcpServer/TiaPortalMcpServer.csproj", "TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj")) {
+            if (Test-Path $csproj) {
+              [xml]$xml = Get-Content $csproj
+              $ns = @{p = "http://schemas.microsoft.com/developer/msbuild/2003"}
+              $propertyGroup = $xml.SelectSingleNode("//p:PropertyGroup[not(p:Version)]", $ns)
+              
+              if ($null -eq $propertyGroup) {
+                $propertyGroup = $xml.CreateElement("PropertyGroup", "http://schemas.microsoft.com/developer/msbuild/2003")
+                $xml.Project.AppendChild($propertyGroup) | Out-Null
+              }
+              
+              $versionEl = $xml.SelectSingleNode("//p:Version", $ns)
+              if ($null -eq $versionEl) {
+                $versionEl = $xml.CreateElement("Version", "http://schemas.microsoft.com/developer/msbuild/2003")
+                $propertyGroup.AppendChild($versionEl) | Out-Null
+              }
+              $versionEl.InnerText = $version
+              
+              $xml.Save($csproj)
+            }
+          }
+
+      - name: Commit version updates
+        run: |
+          VERSION="${{ github.ref }}"
+          VERSION="${VERSION#refs/heads/}"
+          VERSION="${VERSION#v}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add "TiaPortalMcpServer/TiaPortalMcpServer.csproj" "TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj"
+          git commit -m "Bump version to $VERSION" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          BRANCH="${{ github.ref }}"
+          BRANCH="${BRANCH#refs/heads/}"
+          git push origin "$BRANCH" || echo "Push may have failed, continuing..."
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
@@ -157,7 +235,8 @@ jobs:
       - name: Set zip name
         shell: pwsh
         run: |
-          $zipName = "TiaPortalMcpServer-${{ github.ref_name }}".Replace('/', '-')
+          $ref = "${{ github.ref }}".Replace("refs/heads/", "")
+          $zipName = "TiaPortalMcpServer-$ref".Replace('/', '-')
           "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Package as zip
@@ -166,9 +245,7 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >
-          gh release create ${{ github.ref_name }}
-          ./${{ env.ZIP_NAME }}.zip
-          --title "Release ${{ github.ref_name }}"
-          --generate-notes
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REF="${{ github.ref }}".Replace("refs/heads/", "")
+          gh release create "$REF" ./${{ env.ZIP_NAME }}.zip --title "Release $REF" --generate-notes
