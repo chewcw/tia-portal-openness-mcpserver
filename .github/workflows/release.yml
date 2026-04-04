@@ -77,8 +77,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Remove NODE_AUTH_TOKEN
+        run: |
+          unset NODE_AUTH_TOKEN
+          npm whoami
+
       - name: Publish package
-        run: NODE_AUTH_TOKEN="" npm publish --provenance
+        run: npm publish --access public --provenance
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
 
   release:
     name: Build and publish release
