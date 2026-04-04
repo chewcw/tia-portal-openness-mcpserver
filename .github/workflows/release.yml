@@ -28,7 +28,6 @@ jobs:
           VERSION="${{ github.ref }}"
           VERSION="${VERSION#refs/heads/}"
           VERSION="${VERSION#v}"
-          cd cli
           npm version --no-git-tag-version "$VERSION"
 
       - name: Commit version updates
