@@ -23,14 +23,14 @@ jobs:
 
       - name: Update CLI version
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ github.event.release.name }}"
+          VERSION="${VERSION#Release v}"
           npm version --no-git-tag-version "$VERSION"
 
       # - name: Commit version updates
       #   run: |
-      #     VERSION="${{ github.event.release.tag_name }}"
-      #     VERSION="${VERSION#v}"
+      #     VERSION="${{ github.event.release.name }}"
+      #     VERSION="${VERSION#Release v}"
       #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
       #     git config --local user.name "github-actions[bot]"
       #     git add package.json package-lock.json
