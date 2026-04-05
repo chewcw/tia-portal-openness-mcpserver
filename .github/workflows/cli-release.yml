@@ -23,9 +23,15 @@ jobs:
 
       - name: Update CLI version
         run: |
-          VERSION="${{ github.event.release.name }}"
+          if [ -n "${{ github.event.release.name }}" ]; then
+            VERSION="${{ github.event.release.name }}"
+          else
+            VERSION=$(gh api repos/${{ github.repository }}/releases/latest --jq '.name')
+          fi
           VERSION="${VERSION#Release v}"
           npm version --no-git-tag-version "$VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Commit version updates
       #   run: |
