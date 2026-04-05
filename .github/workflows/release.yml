@@ -8,8 +8,8 @@ on:
 
 permissions:
   id-token: write
-  contents: read
   pull-requests: write
+  contents: write
 
 jobs:
   cli-publish:
@@ -95,10 +95,6 @@ jobs:
       TIA_PUBLICAPI_RELEASE_REPOSITORY: ${{ vars.TIA_PUBLICAPI_RELEASE_REPOSITORY }}
       TIA_PUBLICAPI_RELEASE_TAG: ${{ vars.TIA_PUBLICAPI_RELEASE_TAG }}
       TIA_PUBLICAPI_RELEASE_ASSET_NAME: ${{ vars.TIA_PUBLICAPI_RELEASE_ASSET_NAME }}
-
-    # Required to create GitHub Releases and upload assets
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
