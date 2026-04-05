@@ -26,9 +26,9 @@ npx @bizarreaster/tia-portal-openness-mcpserver <command>
 Install latest or selected server release.
 
 ```bash
-tia-mcp install
-tia-mcp install --server-version v1.0.0
-tia-mcp install --install-dir /custom/path
+tia-portal-openness-mcpserver install
+tia-portal-openness-mcpserver install --server-version v1.0.0
+tia-portal-openness-mcpserver install --install-dir /custom/path
 ```
 
 ### `skills`
@@ -36,7 +36,7 @@ tia-mcp install --install-dir /custom/path
 Manage companion skills.
 
 ```bash
-tia-mcp skills install --skills <name[,name...]> --agent-type <type>
+tia-portal-openness-mcpserver skills install --skills <name[,name...]> --agent-type <type>
 ```
 
 Available skills:

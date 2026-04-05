@@ -32,7 +32,7 @@ function printHelp(): void {
       "TIA Portal MCP Server CLI",
       "",
       "Usage:",
-      "  @bizarreaster/tia-portal-openness-mcpserver <command> [options]",
+      "  tia-portal-openness-mcpserver <command> [options]",
       "",
       "Commands:",
       "  install      Install latest or selected server release",
