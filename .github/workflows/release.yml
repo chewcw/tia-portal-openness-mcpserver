@@ -176,5 +176,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REF="${{ github.ref }}".Replace("refs/tags/", "")
+          $REF = "${{ github.ref }}".Replace("refs/tags/", "")
           gh release create "$REF" ./${{ env.ZIP_NAME }}.zip --title "Release $REF" --generate-notes
