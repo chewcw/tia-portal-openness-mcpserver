@@ -78,8 +78,8 @@ npx @modelcontextprotocol/inspector dotnet run --project TiaPortalMcpServer/TiaP
 The companion CLI is in `cli/` and is intended for npm/`npx` workflows.
 
 ```bash
-npx @bizarreaster/tia-portal-openness-mcpserver install --server-version v1.0.0
-npx @bizarreaster/tia-portal-openness-mcpserver skills install --skills siemens-awl-stl-programmer --agent-type opencode
+npx @chewcw/tia-portal-openness-mcpserver install --server-version v1.0.0
+npx @chewcw/tia-portal-openness-mcpserver skills install --skills siemens-awl-stl-programmer --agent-type opencode
 ```
 
 Environment variables used by the CLI:

@@ -24,7 +24,7 @@ function printSkillsHelp(): void {
       "Manage companion skills",
       "",
       "Usage:",
-      "  @bizarreaster/tia-portal-openness-mcpserver skills <command> [options]",
+      "  @chewcw/tia-portal-openness-mcpserver skills <command> [options]",
       "",
       "Commands:",
       "  install       Install selected skills for specified agent type(s)",

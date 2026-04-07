@@ -10,13 +10,13 @@ CLI to install and manage [TIA Portal MCP Server](https://github.com/chewcw/tia-
 ## Installation
 
 ```bash
-npm install -g @bizarreaster/tia-portal-openness-mcpserver
+npm install -g @chewcw/tia-portal-openness-mcpserver
 ```
 
 Or use directly with npx:
 
 ```bash
-npx @bizarreaster/tia-portal-openness-mcpserver <command>
+npx @chewcw/tia-portal-openness-mcpserver <command>
 ```
 
 ## Commands

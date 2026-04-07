@@ -68,9 +68,9 @@ The repository also contains a TypeScript CLI under `../cli` for release-based i
 Examples:
 
 ```bash
-npx @bizarreaster/tia-portal-openness-mcpserver list
-npx @bizarreaster/tia-portal-openness-mcpserver install --server-version v1.0.0
-npx @bizarreaster/tia-portal-openness-mcpserver update
+npx @chewcw/tia-portal-openness-mcpserver list
+npx @chewcw/tia-portal-openness-mcpserver install --server-version v1.0.0
+npx @chewcw/tia-portal-openness-mcpserver update
 ```
 
 ## Tools Available

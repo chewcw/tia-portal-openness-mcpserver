@@ -13,7 +13,7 @@ function printInstallHelp(): void {
       "Install latest or selected server release",
       "",
       "Usage:",
-      "  @bizarreaster/tia-portal-openness-mcpserver install [options] [version]",
+      "  @chewcw/tia-portal-openness-mcpserver install [options] [version]",
       "",
       "Arguments:",
       "  version  Specific version to install (defaults to latest)",
