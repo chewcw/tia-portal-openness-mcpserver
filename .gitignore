@@ -45,3 +45,8 @@ TestResults/
 
 # Publish
 publish/
+
+node_modules/
+.agents/
+
+local-artifacts/
