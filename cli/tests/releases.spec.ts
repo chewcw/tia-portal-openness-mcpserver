@@ -74,33 +74,7 @@ describe("ReleaseClient", () => {
 });
 
 describe("getRepositoryFromEnv", () => {
-  const originalCliRepo = process.env.TIA_MCP_GITHUB_REPOSITORY;
-  const originalGithubRepo = process.env.GITHUB_REPOSITORY;
-
-  beforeEach(() => {
-    delete process.env.TIA_MCP_GITHUB_REPOSITORY;
-    delete process.env.GITHUB_REPOSITORY;
-  });
-
-  afterEach(() => {
-    process.env.TIA_MCP_GITHUB_REPOSITORY = originalCliRepo;
-    process.env.GITHUB_REPOSITORY = originalGithubRepo;
-  });
-
-  it("uses TIA_MCP_GITHUB_REPOSITORY when set", () => {
-    process.env.TIA_MCP_GITHUB_REPOSITORY = "a/b";
-    process.env.GITHUB_REPOSITORY = "c/d";
-
-    expect(getRepositoryFromEnv()).toBe("a/b");
-  });
-
-  it("falls back to GITHUB_REPOSITORY", () => {
-    process.env.GITHUB_REPOSITORY = "fallback/repo";
-
-    expect(getRepositoryFromEnv()).toBe("fallback/repo");
-  });
-
-  it("throws when neither environment variable exists", () => {
-    expect(() => getRepositoryFromEnv()).toThrow("Missing repository.");
+  it("returns the hardcoded repository", () => {
+    expect(getRepositoryFromEnv()).toBe("chewcw/tia-portal-openness-mcpserver");
   });
 });

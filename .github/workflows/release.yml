@@ -6,6 +6,11 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
 jobs:
   release:
     name: Build and publish release
@@ -23,6 +28,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # - name: Update .NET version
+      #   shell: pwsh
+      #   run: |
+      #     $version = "${{ github.ref }}".Replace("refs/tags/", "").TrimStart('v')
+      #     
+      #     foreach ($csproj in @("TiaPortalMcpServer/TiaPortalMcpServer.csproj", "TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj")) {
+      #       if (Test-Path $csproj) {
+      #         [xml]$xml = Get-Content $csproj
+      #         $ns = @{p = "http://schemas.microsoft.com/developer/msbuild/2003"}
+      #         $propertyGroup = $xml.SelectSingleNode("//p:PropertyGroup[not(p:Version)]", $ns)
+      #         
+      #         if ($null -eq $propertyGroup) {
+      #           $propertyGroup = $xml.CreateElement("PropertyGroup", "http://schemas.microsoft.com/developer/msbuild/2003")
+      #           $xml.Project.AppendChild($propertyGroup) | Out-Null
+      #         }
+      #         
+      #         $versionEl = $xml.SelectSingleNode("//p:Version", $ns)
+      #         if ($null -eq $versionEl) {
+      #           $versionEl = $xml.CreateElement("Version", "http://schemas.microsoft.com/developer/msbuild/2003")
+      #           $propertyGroup.AppendChild($versionEl) | Out-Null
+      #         }
+      #         $versionEl.InnerText = $version
+      #         
+      #         $xml.Save($csproj)
+      #       }
+      #     }
+
+      # - name: Commit version updates
+      #   run: |
+      #     VERSION="${{ github.ref }}"
+      #     VERSION="${VERSION#refs/tags/}"
+      #     VERSION="${VERSION#v}"
+      #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+      #     git config --local user.name "github-actions[bot]"
+      #     git add "TiaPortalMcpServer/TiaPortalMcpServer.csproj" "TiaPortalMcpServer.Tests/TiaPortalMcpServer.Tests.csproj"
+      #     git commit -m "Bump version to $VERSION" || echo "No changes to commit"
+      #
+      # - name: Push changes
+      #   run: |
+      #     git push || echo "Push may have failed, continuing..."
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
@@ -118,7 +164,8 @@ jobs:
       - name: Set zip name
         shell: pwsh
         run: |
-          $zipName = "TiaPortalMcpServer-${{ github.ref_name }}".Replace('/', '-')
+          $ref = "${{ github.ref }}".Replace("refs/tags/", "")
+          $zipName = "TiaPortalMcpServer-$ref".Replace('/', '-')
           "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Package as zip
@@ -127,9 +174,7 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >
-          gh release create ${{ github.ref_name }}
-          ./${{ env.ZIP_NAME }}.zip
-          --title "Release ${{ github.ref_name }}"
-          --generate-notes
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $REF = "${{ github.ref }}".Replace("refs/tags/", "")
+          gh release create "$REF" ./${{ env.ZIP_NAME }}.zip --title "Release $REF" --generate-notes

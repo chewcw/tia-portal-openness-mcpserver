@@ -1,267 +1,183 @@
 import { CommandContext } from "../types.js";
-import { readdir } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import {
-  listDirectoryEntriesAtRef,
   syncSkillsRepository,
 } from "../services/skillsRepo.js";
-import { getDefaultStateFilePath, loadCliState } from "../state/installStateStore.js";
-import { saveSkillsState } from "../state/skillsStateStore.js";
-import { SCHEMA_VERSION } from "../state/schema.js";
+import { loadServerManifest } from "../state/serverManifest.js";
+import {
+  loadSkillsManifest,
+  saveSkillsManifest,
+  SKILLS_MANIFEST_VERSION,
+} from "../state/skillsManifest.js";
+import { getSkillsPath, setAgentType, resolveSkillsPath } from "../services/agentPathResolver.js";
+import { AVAILABLE_SKILLS, COMMON_SKILLS_REPO } from "../constants.js";
 
-const DEFAULT_NAMESPACE_PATH = "siemens";
+type AgentType = "opencode" | "claude" | "cursor" | "generic";
 
-interface NormalizedSkillsRepo {
-  repositoryUrl: string;
-  treeRef?: string;
-  namespacePath: string;
+const VALID_AGENT_TYPES: AgentType[] = ["opencode", "claude", "cursor", "generic"];
+
+function printSkillsHelp(): void {
+  const skillsList = AVAILABLE_SKILLS.map((s) => `  - ${s.name}`).join("\n");
+
+  process.stdout.write(
+    [
+      "Manage companion skills",
+      "",
+      "Usage:",
+      "  @chewcw/tia-portal-openness-mcpserver skills <command> [options]",
+      "",
+      "Commands:",
+      "  install       Install selected skills for specified agent type(s)",
+      "",
+      "Options:",
+      "  --skills <name[,name...]>       Skills to install (required)",
+      "  --agent-type <type,...>           Agent type(s): opencode|claude|cursor|generic, comma-separated for multiple (required)",
+      "  --help                          Show help",
+      "",
+      "Available skills:",
+      skillsList,
+    ].join("\n") + "\n"
+  );
 }
 
-function getDefaultSkillsPath(): string {
-  const appData = process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming");
-  return path.join(appData, "TiaPortalMcpServerCli", "skills");
-}
-
-function normalizeRepositorySource(source: string | undefined): NormalizedSkillsRepo | undefined {
-  if (!source) {
-    return undefined;
-  }
-
-  const trimmed = source.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const githubTreeMatch = trimmed.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)(?:\/(.+))?$/i);
-  if (githubTreeMatch) {
-    const owner = githubTreeMatch[1];
-    const repo = githubTreeMatch[2];
-    const ref = githubTreeMatch[3];
-    const pathSuffix = githubTreeMatch[4]?.replace(/\/+$/, "");
-    const normalized: NormalizedSkillsRepo = {
-      repositoryUrl: `https://github.com/${owner}/${repo}`,
-      namespacePath: pathSuffix && pathSuffix.length > 0 ? pathSuffix : DEFAULT_NAMESPACE_PATH,
-    };
-
-    if (ref) {
-      normalized.treeRef = ref;
-    }
-
-    return normalized;
-  }
-
-  return {
-    repositoryUrl: trimmed.replace(/\/+$/, ""),
-    namespacePath: DEFAULT_NAMESPACE_PATH,
-  };
-}
-
-function parseRequestedSkills(rawSkills: string[] | undefined): string[] {
-  if (!rawSkills) {
+function parseSkillsArg(raw: string | undefined): string[] {
+  if (!raw) {
     return [];
   }
 
-  const unique = new Set<string>();
-
-  for (const entry of rawSkills) {
-    const name = entry.trim();
-    if (name.length === 0) {
-      continue;
-    }
-
-    if (!/^[A-Za-z0-9._-]+$/.test(name)) {
-      throw new Error(`Invalid skill name '${entry}'. Use folder names only.`);
-    }
-
-    unique.add(name);
-  }
-
-  return [...unique].sort((a, b) => a.localeCompare(b));
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
-function nonEmpty(value: string | undefined): string | undefined {
-  if (!value) {
+function validateAgentType(raw: string | undefined): AgentType[] | undefined {
+  if (!raw) {
     return undefined;
   }
 
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  const parts = raw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item.length > 0);
+
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  for (const part of parts) {
+    if (!VALID_AGENT_TYPES.includes(part as AgentType)) {
+      return undefined;
+    }
+  }
+
+  return parts as AgentType[];
 }
 
-async function listLocalSkillFolders(rootPath: string): Promise<string[]> {
-  const namespaceRoot = path.join(rootPath, DEFAULT_NAMESPACE_PATH);
-  const entries = await readdir(namespaceRoot, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b));
+function validateSkills(requested: string[]): string[] {
+  const availableSet = new Set(AVAILABLE_SKILLS.map((s) => s.name));
+  const valid: string[] = [];
+  const invalid: string[] = [];
+
+  for (const skill of requested) {
+    if (availableSet.has(skill)) {
+      valid.push(skill);
+    } else {
+      invalid.push(skill);
+    }
+  }
+
+  if (invalid.length > 0) {
+    throw new Error(`Unknown skills: ${invalid.join(", ")}. Available: ${AVAILABLE_SKILLS.map((s) => s.name).join(", ")}`);
+  }
+
+  return valid;
 }
 
-function resolveSubcommand(args: string[]): string {
-  const candidate = args[0]?.toLowerCase();
-  if (!candidate) {
-    return "status";
-  }
+async function installSkills(skills: string[], agentTypes: AgentType[]): Promise<number> {
+  for (const agentType of agentTypes) {
+    setAgentType(agentType);
 
-  if (candidate === "status" || candidate === "sync" || candidate === "list") {
-    return candidate;
-  }
+    const manifest = await loadSkillsManifest();
+    const serverManifest = await loadServerManifest();
 
-  return "";
-}
+    const resolvedRepo = COMMON_SKILLS_REPO;
+    const resolvedRef = "main";
+    const destinationPath = resolveSkillsPath(agentType);
 
-async function printStatus(): Promise<number> {
-  const stateFilePath = getDefaultStateFilePath();
-  const state = await loadCliState(stateFilePath);
-
-  if (!state.skills) {
-    process.stdout.write("No skills metadata found. Run 'skills sync' first.\n");
-    return 0;
-  }
-
-  process.stdout.write(
-    [
-      `repo=${state.skills.repoUrl}`,
-      `ref=${state.skills.ref}`,
-      `local=${state.skills.localPath}`,
-      `synced_at=${state.skills.syncedAtUtc}`,
-      `server_version=${state.skills.serverVersion}`,
-      `selected_skills=${state.skills.selectedSkills.join(",")}`,
-      `selected_paths=${state.skills.selectedPaths.join(",")}`,
-    ].join("\n") + "\n"
-  );
-
-  return 0;
-}
-
-async function syncSkills(context: CommandContext): Promise<number> {
-  const stateFilePath = getDefaultStateFilePath();
-  const state = await loadCliState(stateFilePath);
-
-  const parsedRepo = normalizeRepositorySource(context.parsed.options.skillsRepo || "https://github.com/chewcw/agent-skills/tree/main/siemens");
-  const stateRepo = normalizeRepositorySource(state.skills?.repoUrl);
-  const resolvedRepo = parsedRepo?.repositoryUrl ?? stateRepo?.repositoryUrl;
-
-  if (!resolvedRepo) {
-    process.stderr.write("Skills repository URL is required. Use --skills-repo or run install with skills sync.\n");
-    return 1;
-  }
-
-  const namespacePath = parsedRepo?.namespacePath ?? stateRepo?.namespacePath ?? DEFAULT_NAMESPACE_PATH;
-  const resolvedRef =
-    nonEmpty(context.parsed.options.skillsRef) ??
-    parsedRepo?.treeRef ??
-    state.skills?.ref ??
-    state.installedServer?.serverVersion ??
-    "main";
-
-  const destinationPath = state.skills?.localPath ?? getDefaultSkillsPath();
-  const requestedSkills = parseRequestedSkills(context.parsed.options.skills);
-
-  if (context.parsed.options.allSkills && requestedSkills.length > 0) {
-    process.stderr.write("Use either --skills or --all, not both.\n");
-    return 1;
-  }
-
-  await syncSkillsRepository({
-    repoUrl: resolvedRepo,
-    ref: resolvedRef,
-    destinationPath,
-  });
-
-  const availableSkills = await listDirectoryEntriesAtRef(destinationPath, resolvedRef, namespacePath);
-
-  if (availableSkills.length === 0) {
-    process.stderr.write(`No skills found under '${namespacePath}' at ref '${resolvedRef}'.\n`);
-    return 1;
-  }
-
-  const availableSet = new Set(availableSkills);
-  const selectedSkills =
-    requestedSkills.length > 0 || context.parsed.options.allSkills
-      ? (requestedSkills.length > 0 ? requestedSkills : availableSkills)
-      : availableSkills;
-
-  const invalidSkills = selectedSkills.filter((skill) => !availableSet.has(skill));
-  if (invalidSkills.length > 0) {
-    process.stderr.write(`Unknown skills: ${invalidSkills.join(", ")}\n`);
-    process.stderr.write(`Available skills: ${availableSkills.join(", ")}\n`);
-    return 1;
-  }
-
-  const selectedPaths = selectedSkills.map((skill) => `${namespacePath}/${skill}`);
-
-  const result = await syncSkillsRepository({
-    repoUrl: resolvedRepo,
-    ref: resolvedRef,
-    destinationPath,
-    sparsePaths: selectedPaths,
-  });
-
-  const serverVersion = state.installedServer?.serverVersion ?? state.skills?.serverVersion ?? "unknown";
-
-  await saveSkillsState(
-    {
-      schemaVersion: SCHEMA_VERSION,
+    await syncSkillsRepository({
       repoUrl: resolvedRepo,
       ref: resolvedRef,
-      localPath: result.destinationPath,
-      selectedSkills,
-      selectedPaths,
+      destinationPath,
+      sparsePaths: skills,
+    });
+
+    const serverVersion = serverManifest?.serverVersion ?? manifest?.serverVersion ?? "unknown";
+
+    await saveSkillsManifest({
+      schemaVersion: SKILLS_MANIFEST_VERSION,
+      repoUrl: resolvedRepo,
+      ref: resolvedRef,
+      selectedSkills: skills,
       syncedAtUtc: new Date().toISOString(),
       serverVersion,
-    },
-    stateFilePath
-  );
+    });
 
-  process.stdout.write(
-    [
-      `repo=${resolvedRepo}`,
-      `ref=${resolvedRef}`,
-      `namespace=${namespacePath}`,
-      `local=${result.destinationPath}`,
-      `selected_skills=${selectedSkills.join(",")}`,
-    ].join("\n") + "\n"
-  );
+    process.stdout.write(
+      [
+        `agent=${agentType}`,
+        `repo=${resolvedRepo}`,
+        `ref=${resolvedRef}`,
+        `local=${destinationPath}`,
+        `selected_skills=${skills.join(",")}`,
+      ].join("\n") + "\n"
+    );
+  }
 
   return 0;
-}
-
-async function listSkills(): Promise<number> {
-  const state = await loadCliState(getDefaultStateFilePath());
-  const root = state.skills?.localPath ?? getDefaultSkillsPath();
-
-  try {
-    const names = await listLocalSkillFolders(root);
-    if (names.length === 0) {
-      process.stdout.write("No local skills found. Run 'skills sync' first.\n");
-      return 0;
-    }
-
-    process.stdout.write(names.join("\n") + "\n");
-    return 0;
-  } catch {
-    process.stderr.write("Skills are not available locally. Run 'skills sync' first.\n");
-    return 1;
-  }
 }
 
 export async function skillsCommand(context: CommandContext): Promise<number> {
-  const subcommand = resolveSubcommand(context.parsed.args);
-
-  if (!subcommand) {
-    process.stderr.write("Unknown skills subcommand. Use: status, sync, or list.\n");
-    return 1;
+  if (context.parsed.options.help) {
+    printSkillsHelp();
+    return 0;
   }
 
-  if (subcommand === "status") {
-    return printStatus();
+  const args = context.parsed.args;
+  const skillsArg = context.parsed.options.skills as unknown as string | undefined;
+  const agentTypeArg = context.parsed.options.agentType as unknown as string | undefined;
+
+  if (args.length === 0 && !skillsArg && !agentTypeArg) {
+    printSkillsHelp();
+    return 0;
   }
 
-  if (subcommand === "sync") {
-    return syncSkills(context);
+  if (args.length === 0 || args[0] === "install") {
+    const skillsArg = context.parsed.options.skills as unknown as string | undefined;
+    const agentTypeArg = context.parsed.options.agentType as unknown as string | undefined;
+
+    const agentTypes = validateAgentType(agentTypeArg);
+    if (!agentTypes || agentTypes.length === 0) {
+      process.stderr.write("--agent-type is required. Use: opencode, claude, cursor, or generic (comma-separated for multiple)\n");
+      return 1;
+    }
+
+    const skills = parseSkillsArg(skillsArg);
+    if (skills.length === 0) {
+      process.stderr.write("--skills is required. Provide skill names separated by commas.\n");
+      return 1;
+    }
+
+    try {
+      const validSkills = validateSkills(skills);
+      return installSkills(validSkills, agentTypes);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`${message}\n`);
+      return 1;
+    }
   }
 
-  return listSkills();
+  printSkillsHelp();
+  return 1;
 }

@@ -66,6 +66,7 @@ build/
 
 # Package locks
 package-lock.json
+!cli/package-lock.json
 yarn.lock
 
 .agents/

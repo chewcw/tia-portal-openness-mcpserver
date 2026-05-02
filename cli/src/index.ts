@@ -1,9 +1,30 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { dispatchCommand } from "./commands/router.js";
 import { parseArgs } from "./parser.js";
 
-const version = "0.1.0";
+function findPackageJson(startDir: string): string {
+  let currentDir = startDir;
+  while (currentDir !== dirname(currentDir)) {
+    const candidate = join(currentDir, "package.json");
+    try {
+      readFileSync(candidate);
+      return candidate;
+    } catch {
+      currentDir = dirname(currentDir);
+    }
+  }
+  throw new Error("package.json not found");
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJsonPath = findPackageJson(__dirname);
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+const version = packageJson.version;
 
 function printHelp(): void {
   process.stdout.write(
@@ -11,29 +32,17 @@ function printHelp(): void {
       "TIA Portal MCP Server CLI",
       "",
       "Usage:",
-      "  tia-mcp <command> [options]",
+      "  tia-portal-openness-mcpserver <command> [options]",
       "",
       "Commands:",
       "  install      Install latest or selected server release",
-      "  download     Download a release asset",
-      "  list         List available server releases",
-      "  check        Run local prerequisite checks",
-      "  update       Update existing installation",
-      "  run          Launch installed server",
       "  skills       Manage companion skills",
       "",
       "Global options:",
       "  --help       Show this help",
       "  --version    Show CLI version",
-      "  --yes        Accept prompt defaults",
-      "  --non-interactive  Disable prompts",
       "  --server-version <tag>",
       "  --install-dir <path>",
-      "  --skills-repo <url>",
-      "  --skills-ref <ref>",
-      "  --skills <name[,name...]>",
-      "  --all",
-      "  --verbose",
     ].join("\n") + "\n"
   );
 }
@@ -46,10 +55,14 @@ async function run(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (argv.length === 0 || parsed.options.help) {
+  // Show general help if no command is provided or if help flag is provided without a command
+  if (argv.length === 0 || (parsed.options.help && !parsed.name)) {
     printHelp();
     return 0;
   }
+
+  // If help flag is provided with a command, let the command handler deal with it
+  // (we don't return here, we let dispatchCommand handle it)
 
   return dispatchCommand({ parsed });
 }

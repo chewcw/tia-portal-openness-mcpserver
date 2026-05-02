@@ -1,12 +1,27 @@
 {
-  "name": "@tiaportal/mcp-server-cli",
-  "version": "0.1.0",
-  "description": "TypeScript CLI to install and manage TIA Portal MCP Server releases",
-  "license": "MIT",
-  "private": true,
+  "name": "@chewcw/tia-portal-openness-mcpserver",
+  "version": "0.0.2",
+  "description": "CLI to install and manage TIA Portal MCP Server releases",
   "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
   "bin": {
+    "tia-portal-openness-mcpserver": "dist/index.js",
     "tia-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chewcw/tia-portal-openness-mcpserver.git"
+  },
+  "homepage": "https://github.com/chewcw/tia-portal-openness-mcpserver#readme",
+  "bugs": {
+    "url": "https://github.com/chewcw/tia-portal-openness-mcpserver/issues"
   },
   "engines": {
     "node": ">=20"
@@ -16,7 +31,8 @@
     "clean": "rimraf dist",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.3.2",

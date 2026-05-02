@@ -5,7 +5,7 @@ Purpose
 - It focuses on .NET app and MCP server best practices, plus TIA Portal Openness specifics.
 
 Project Snapshot
-- Current target: .NET 9 (will be refactored later to .NET Framework).
+- Current target: .NET Framework 4.8 (`net48`).
 - Domain: Siemens TIA Portal v20 Openness API/SDK.
 - Role: MCP server that exposes safe, structured tooling to clients.
 

@@ -1,4 +1,5 @@
-import { access, mkdir, rm } from "node:fs/promises";
+import { access, cp, mkdir, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { ExternalCommandError } from "../errors.js";
@@ -85,15 +86,9 @@ function parseDirectoryListing(raw: string): string[] {
 
 export async function listDirectoryEntriesAtRef(
   repositoryPath: string,
-  ref: string,
-  namespacePath: string
+  ref: string
 ): Promise<string[]> {
-  const namespace = namespacePath.trim().replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!namespace) {
-    throw new Error("Skills namespace path must not be empty.");
-  }
-
-  const result = await runGit(["-C", repositoryPath, "ls-tree", "-d", "--name-only", `${ref}:${namespace}`]);
+  const result = await runGit(["-C", repositoryPath, "ls-tree", "-d", "--name-only", `${ref}:`]);
   return parseDirectoryListing(result.stdout);
 }
 
@@ -104,6 +99,10 @@ async function hasGitRepository(pathValue: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function getStagingPath(): string {
+  return path.join(os.tmpdir(), `tia-skills-${Date.now()}`);
 }
 
 export async function syncSkillsRepository(options: SkillsSyncOptions): Promise<SkillsSyncResult> {
@@ -119,25 +118,34 @@ export async function syncSkillsRepository(options: SkillsSyncOptions): Promise<
   }
 
   const sparsePaths = normalizePaths(options.sparsePaths);
+  const stagingPath = getStagingPath();
 
-  await mkdir(options.destinationPath, { recursive: true });
   await ensureGitAvailable();
 
-  const alreadyCloned = await hasGitRepository(options.destinationPath);
+  await rm(stagingPath, { recursive: true, force: true }).catch(() => {});
+  await mkdir(stagingPath, { recursive: true });
 
-  if (!alreadyCloned) {
-    await rm(options.destinationPath, { recursive: true, force: true });
-    await runGit(["clone", "--filter=blob:none", "--no-checkout", repoUrl, options.destinationPath]);
-  } else {
-    await runGit(["-C", options.destinationPath, "fetch", "--all", "--tags", "--prune"]);
-  }
+  await runGit(["clone", "--filter=blob:none", "--no-checkout", repoUrl, stagingPath]);
 
   if (sparsePaths.length > 0) {
-    await runGit(["-C", options.destinationPath, "sparse-checkout", "init", "--cone"]);
-    await runGit(["-C", options.destinationPath, "sparse-checkout", "set", ...sparsePaths]);
+    await runGit(["-C", stagingPath, "sparse-checkout", "init", "--cone"]);
+    await runGit(["-C", stagingPath, "sparse-checkout", "set", ...sparsePaths]);
   }
 
-  await runGit(["-C", options.destinationPath, "checkout", ref]);
+  await runGit(["-C", stagingPath, "checkout", ref]);
+
+  await mkdir(options.destinationPath, { recursive: true });
+
+  for (const skill of sparsePaths) {
+    const sourcePath = path.join(stagingPath, skill);
+    const destPath = path.join(options.destinationPath, skill);
+    await rm(destPath, { recursive: true, force: true }).catch(() => {});
+    await cp(sourcePath, destPath, { recursive: true });
+    const destGitPath = path.join(destPath, ".git");
+    await rm(destGitPath, { recursive: true, force: true }).catch(() => {});
+  }
+
+  await rm(stagingPath, { recursive: true, force: true });
 
   return {
     destinationPath: options.destinationPath,
