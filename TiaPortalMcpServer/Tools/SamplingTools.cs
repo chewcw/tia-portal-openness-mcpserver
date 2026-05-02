@@ -48,7 +48,7 @@ namespace TiaPortalMcpServer
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Generated code snippet</returns>
         [McpServerTool, Description("Generate TIA Portal Openness API code for a given task")]
-        public async Task<string> sampling_generate_code(
+        public async Task<CallToolResult> sampling_generate_code(
             McpServer server,
             [Description("Description of the TIA Portal task to generate code for")] string taskDescription,
             CancellationToken cancellationToken)
@@ -87,14 +87,14 @@ namespace TiaPortalMcpServer
                     .OfType<TextContentBlock>()
                     .FirstOrDefault()?.Text ?? "No code generated";
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateSuccess(generatedCode)
                 );
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("sampling"))
             {
                 _logger.LogWarning(ex, "Sampling not supported by client");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.OperationNotSupported,
                         "LLM sampling is not supported by the connected client. This feature requires a client with sampling capabilities."
@@ -104,7 +104,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during code generation sampling");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.InternalError,
                         $"Failed to generate code: {ex.Message}"
@@ -120,7 +120,7 @@ namespace TiaPortalMcpServer
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Project summary and insights</returns>
         [McpServerTool, Description("Summarize the current TIA Portal project structure and provide insights")]
-        public async Task<string> sampling_summarize_project(
+        public async Task<CallToolResult> sampling_summarize_project(
             McpServer server,
             CancellationToken cancellationToken)
         {
@@ -131,7 +131,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<string>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -190,14 +190,14 @@ namespace TiaPortalMcpServer
                     .OfType<TextContentBlock>()
                     .FirstOrDefault()?.Text ?? "No summary generated";
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateSuccess(summary)
                 );
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("sampling"))
             {
                 _logger.LogWarning(ex, "Sampling not supported by client");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.OperationNotSupported,
                         "LLM sampling is not supported by the connected client."
@@ -207,7 +207,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during project summarization sampling");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.InternalError,
                         $"Failed to summarize project: {ex.Message}"
@@ -224,7 +224,7 @@ namespace TiaPortalMcpServer
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>AI-generated suggestions and advice</returns>
         [McpServerTool, Description("Get intelligent suggestions for TIA Portal development tasks")]
-        public async Task<string> sampling_get_suggestions(
+        public async Task<CallToolResult> sampling_get_suggestions(
             McpServer server,
             [Description("Context or question about TIA Portal development")] string context,
             CancellationToken cancellationToken)
@@ -262,14 +262,14 @@ namespace TiaPortalMcpServer
                     .OfType<TextContentBlock>()
                     .FirstOrDefault()?.Text ?? "No suggestions generated";
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateSuccess(suggestions)
                 );
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("sampling"))
             {
                 _logger.LogWarning(ex, "Sampling not supported by client");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.OperationNotSupported,
                         "LLM sampling is not supported by the connected client."
@@ -279,7 +279,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during suggestions sampling");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<string>.CreateError(
                         ErrorCodes.InternalError,
                         $"Failed to get suggestions: {ex.Message}"

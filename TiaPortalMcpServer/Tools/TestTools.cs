@@ -1,7 +1,9 @@
 using System;
 using System.ComponentModel;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using TiaPortalMcpServer.Models;
 
 namespace TiaPortalMcpServer
 {
@@ -16,17 +18,17 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Returns a greeting from TIA MCP Server")]
-        public string hello_world()
+        public CallToolResult hello_world()
         {
             try
             {
                 _logger.LogInformation("This is a test");
-                return "Hello from TIA MCP Server!";
+                return McpToolResults.Success(new { message = "Hello from TIA MCP Server!" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in hello_world");
-                return $"Error: {ex.Message}";
+                return McpToolResults.Error(ErrorCodes.InternalError, $"Error: {ex.Message}", ex.ToString());
             }
         }
     }

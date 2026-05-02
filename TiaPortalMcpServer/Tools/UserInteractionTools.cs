@@ -24,7 +24,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Ask the user for missing information using MCP elicitation. Returns a key/value object with the user's responses.")]
-        public async Task<string> utilities_elicit_user_input(
+        public async Task<CallToolResult> utilities_elicit_user_input(
             McpServer server,
             [Description("Elicitation request containing message and fields")] ElicitationRequest request,
             CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Use a client with MCP Apps/elicitation support."
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer
 
                 if (request == null || request.Fields == null || request.Fields.Count == 0)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             "No fields provided for elicitation."
@@ -60,7 +60,7 @@ namespace TiaPortalMcpServer
                 {
                     if (string.IsNullOrWhiteSpace(field.Name))
                     {
-                        return JsonConvert.SerializeObject(
+                        return McpToolResults.From(
                             ToolResponse<object>.CreateError(
                                 ErrorCodes.InvalidParameter,
                                 "Each field must include a non-empty name."
@@ -102,7 +102,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -119,14 +119,14 @@ namespace TiaPortalMcpServer
                     }
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<Dictionary<string, object?>>.CreateSuccess(result)
                 );
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during user elicitation");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InternalError,
                         $"Failed to elicit user input: {ex.Message}"

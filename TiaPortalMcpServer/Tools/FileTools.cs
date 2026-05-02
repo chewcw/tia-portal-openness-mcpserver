@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using TiaPortalMcpServer.Models;
@@ -30,7 +31,7 @@ namespace TiaPortalMcpServer.Tools
         /// Supports custom delimiters. Path must be within allowed roots for security.
         /// </summary>
         [McpServerTool, Description("Read a CSV file and extract data as structured rows")]
-        public string files_read_csv(
+        public CallToolResult files_read_csv(
             [Description("Absolute or relative path to CSV file")] string filePath,
             [Description("Column delimiter character (default: comma)")] string delimiter = ",")
         {
@@ -41,7 +42,7 @@ namespace TiaPortalMcpServer.Tools
                 // Validate delimiter
                 if (string.IsNullOrEmpty(delimiter) || delimiter.Length != 1)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             "Delimiter must be a single character."));
@@ -50,14 +51,14 @@ namespace TiaPortalMcpServer.Tools
                 var result = _fileAdapter.ReadCsvFile(filePath, delimiter[0]);
                 if (!result.Success)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             result.Error));
                 }
 
                 var data = result.Data;
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         rowCount = data.Count,
@@ -69,7 +70,7 @@ namespace TiaPortalMcpServer.Tools
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading CSV file: {FilePath}", filePath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         "Unexpected error reading CSV file.",
@@ -81,7 +82,7 @@ namespace TiaPortalMcpServer.Tools
         /// Lists all worksheet names in an Excel file.
         /// </summary>
         [McpServerTool, Description("List all worksheet names in an Excel file")]
-        public string files_list_sheets(
+        public CallToolResult files_list_sheets(
             [Description("Absolute or relative path to Excel file (.xlsx or .xls)")] string filePath)
         {
             try
@@ -91,14 +92,14 @@ namespace TiaPortalMcpServer.Tools
                 var result = _fileAdapter.ListExcelSheets(filePath);
                 if (!result.Success)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             result.Error));
                 }
 
                 var sheets = result.Data;
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         sheetCount = sheets.Count,
@@ -108,7 +109,7 @@ namespace TiaPortalMcpServer.Tools
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error listing Excel sheets: {FilePath}", filePath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         "Unexpected error listing Excel sheets.",
@@ -121,7 +122,7 @@ namespace TiaPortalMcpServer.Tools
         /// Returns structured data with headers from the first row.
         /// </summary>
         [McpServerTool, Description("Read a worksheet from an Excel file and extract data as structured rows")]
-        public string files_read_excel(
+        public CallToolResult files_read_excel(
             [Description("Absolute or relative path to Excel file (.xlsx or .xls)")] string filePath,
             [Description("Worksheet name to read from")] string sheetName)
         {
@@ -131,7 +132,7 @@ namespace TiaPortalMcpServer.Tools
 
                 if (string.IsNullOrWhiteSpace(sheetName))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             "Sheet name cannot be empty."));
@@ -140,14 +141,14 @@ namespace TiaPortalMcpServer.Tools
                 var result = _fileAdapter.ReadExcelSheet(filePath, sheetName);
                 if (!result.Success)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             result.Error));
                 }
 
                 var data = result.Data;
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         rowCount = data.Count,
@@ -159,7 +160,7 @@ namespace TiaPortalMcpServer.Tools
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading Excel sheet {SheetName} from {FilePath}", sheetName, filePath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Unexpected error reading Excel sheet '{sheetName}'.",
@@ -172,7 +173,7 @@ namespace TiaPortalMcpServer.Tools
         /// Checks for consistent column count, valid headers, and syntax errors.
         /// </summary>
         [McpServerTool, Description("Validate CSV file format and report any structural issues")]
-        public string files_validate_format(
+        public CallToolResult files_validate_format(
             [Description("Absolute or relative path to CSV file")] string filePath,
             [Description("Column delimiter character (default: comma)")] string delimiter = ",")
         {
@@ -183,7 +184,7 @@ namespace TiaPortalMcpServer.Tools
                 // Validate delimiter
                 if (string.IsNullOrEmpty(delimiter) || delimiter.Length != 1)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             "Delimiter must be a single character."));
@@ -192,14 +193,14 @@ namespace TiaPortalMcpServer.Tools
                 var result = _fileAdapter.ValidateCsvFormat(filePath, delimiter[0]);
                 if (!result.Success)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             result.Error));
                 }
 
                 var report = result.Data;
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         isValid = report.IsValid,
@@ -212,7 +213,7 @@ namespace TiaPortalMcpServer.Tools
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating CSV format: {FilePath}", filePath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         "Unexpected error validating CSV format.",
@@ -225,7 +226,7 @@ namespace TiaPortalMcpServer.Tools
         /// Useful for checking file size, existence, and basic properties.
         /// </summary>
         [McpServerTool, Description("Get basic file information (size, last modified, type)")]
-        public string files_get_info(
+        public CallToolResult files_get_info(
             [Description("Absolute or relative path to file")] string filePath)
         {
             try
@@ -235,7 +236,7 @@ namespace TiaPortalMcpServer.Tools
                 var pathResult = _fileAdapter.ValidateFilePath(filePath);
                 if (!pathResult.Success)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             pathResult.Error));
@@ -244,7 +245,7 @@ namespace TiaPortalMcpServer.Tools
                 var fullPath = pathResult.Data;
                 var fileInfo = new System.IO.FileInfo(fullPath);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         path = fullPath,
@@ -259,7 +260,7 @@ namespace TiaPortalMcpServer.Tools
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting file info: {FilePath}", filePath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         "Unexpected error getting file information.",

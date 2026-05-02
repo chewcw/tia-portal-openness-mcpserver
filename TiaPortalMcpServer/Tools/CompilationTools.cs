@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -29,7 +30,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Compile the entire TIA Portal project including all devices, PLCs, and HMI targets. Returns compilation state (success/error/warning). Prerequisites: Project must be open. Use this to validate the entire project and identify compilation errors across all project components. Note: Compilation can be time-consuming for large projects.")]
-        public string compilation_project()
+        public CallToolResult compilation_project()
         {
             _logger.LogInformation("compilation_project called");
 
@@ -38,7 +39,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -50,7 +51,7 @@ namespace TiaPortalMcpServer
                 var result = TryCompileProject(project, out var compileState, out var compileMessage);
                 if (!result)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.CompilationError,
                             compileMessage ?? "Compile service not available for the current project"
@@ -58,7 +59,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = project.Name,
@@ -70,7 +71,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error compiling project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error compiling project: {comEx.Message}",
@@ -81,7 +82,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error compiling project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.CompilationError,
                         $"Error compiling project: {ex.Message}",
@@ -92,7 +93,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Compile PLC software for a specific device. Returns compilation state and identifies device-specific errors. Prerequisites: Project must be open, device must have PLC software. Use this for targeted compilation when working on a single device's logic. Faster than full project compilation for iterative development.")]
-        public string compilation_software([Description("Device name")] string deviceName)
+        public CallToolResult compilation_software([Description("Device name")] string deviceName)
         {
             _logger.LogInformation("compilation_software called with deviceName='{DeviceName}'", deviceName);
 
@@ -101,7 +102,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -112,7 +113,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -123,7 +124,7 @@ namespace TiaPortalMcpServer
                 var software = _sessionManager.PortalService.GetPlcSoftware(device);
                 if (software == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.TiaError,
                             $"Device '{deviceName}' does not have PLC software"
@@ -135,7 +136,7 @@ namespace TiaPortalMcpServer
                 var result = TryCompileSoftware(software, out var compileState, out var compileMessage);
                 if (!result)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.CompilationError,
                             compileMessage ?? "Compile service not available for PLC software"
@@ -143,7 +144,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -155,7 +156,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error compiling software for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error compiling software: {comEx.Message}",
@@ -166,7 +167,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error compiling software for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.CompilationError,
                         $"Error compiling software: {ex.Message}",

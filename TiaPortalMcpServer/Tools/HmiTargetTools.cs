@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json;
 using Siemens.Engineering;
@@ -45,7 +46,7 @@ namespace TiaPortalMcpServer
         /// </summary>
         /// <returns>JSON string containing the list of HMI targets with metadata</returns>
         [McpServerTool, Description("Enumerate all HMI targets (HMI panels, comfort panels, WinCC systems) in the current project. Returns list of HMI targets with device names, HMI types, target names, and order numbers. Prerequisites: Project must be open. Use this to discover HMI devices before HMI-specific operations like screen management or tag browsing. Filters devices to include only those with HMI software.")]
-        public string hmi_targets_list()
+        public CallToolResult hmi_targets_list()
         {
             _logger.LogInformation("hmi_targets_list called");
 
@@ -54,7 +55,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -96,7 +97,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Found {Count} HMI targets in project", hmiTargets.Count);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         hmiTargetCount = hmiTargets.Count,
@@ -107,7 +108,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error listing HMI targets");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error listing HMI targets: {comEx.Message}",
@@ -118,7 +119,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error listing HMI targets");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error listing HMI targets: {ex.Message}",
@@ -134,7 +135,7 @@ namespace TiaPortalMcpServer
         /// <param name="deviceName">Name of the device to query</param>
         /// <returns>JSON string containing HMI target details if found</returns>
         [McpServerTool, Description("Retrieve detailed HMI configuration for a specific device including HMI type, targetname, and software properties. Returns HMI target metadata. Prerequisites: Project must be open, device must exist. Returns found=false if device is not an HMI target. Use this to inspect HMI configuration details before screen or tag operations, or to verify HMI device type.")]
-        public string hmi_targets_get(
+        public CallToolResult hmi_targets_get(
             [Description("Name of the device to query")] string deviceName)
         {
             _logger.LogInformation("hmi_targets_get called with deviceName='{DeviceName}'", deviceName);
@@ -144,7 +145,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -155,7 +156,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -167,7 +168,7 @@ namespace TiaPortalMcpServer
                 if (hmiSoftware == null)
                 {
                     _logger.LogInformation("Device '{DeviceName}' does not have an HMI target", deviceName);
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             found = false,
@@ -183,7 +184,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Retrieved HMI target for device '{DeviceName}'", deviceName);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         found = true,
@@ -200,7 +201,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error getting HMI target for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error getting HMI target: {comEx.Message}",
@@ -211,7 +212,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting HMI target for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error getting HMI target: {ex.Message}",
@@ -227,7 +228,7 @@ namespace TiaPortalMcpServer
         /// <param name="deviceName">Name of the device to validate</param>
         /// <returns>JSON string containing validation result</returns>
         [McpServerTool, Description("Validate whether a device is configured as an HMI target (panel/WinCC system) versus a PLC-only device. Returns boolean isValid and validation message. Prerequisites: Project must be open, device must exist. Use this before calling HMI-specific tools to avoid errors on non-HMI devices. Essential for conditional workflows that handle both PLC and HMI devices differently.")]
-        public string hmi_targets_validate(
+        public CallToolResult hmi_targets_validate(
             [Description("Name of the device to validate")] string deviceName)
         {
             _logger.LogInformation("hmi_targets_validate called with deviceName='{DeviceName}'", deviceName);
@@ -237,7 +238,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -248,7 +249,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -272,7 +273,7 @@ namespace TiaPortalMcpServer
                     _logger.LogInformation(message);
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         isValid = isValid,
@@ -284,7 +285,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error validating HMI target for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error validating HMI target: {comEx.Message}",
@@ -295,7 +296,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating HMI target for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error validating HMI target: {ex.Message}",

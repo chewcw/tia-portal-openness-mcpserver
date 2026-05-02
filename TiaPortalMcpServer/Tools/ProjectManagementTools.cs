@@ -34,7 +34,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Create a new TIA Portal project in the specified directory. If name/path are missing and client supports MCP Apps/elicitation, the server will prompt for them. Returns the project path. Prerequisites: Directory must exist, no project currently open. Note: Newly created project is automatically closed after creation; use projects_open to open it for editing.")]
-        public async Task<string> projects_create(
+        public async Task<CallToolResult> projects_create(
             McpServer server,
             [Description("Project name")] string? name,
             [Description("Path to save the project")] string? path,
@@ -46,7 +46,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide name/path or use a client with MCP Apps/elicitation support."
@@ -80,7 +80,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -107,7 +107,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "name and path are required."
@@ -121,7 +121,7 @@ namespace TiaPortalMcpServer
                 if (!Directory.Exists(path))
                 {
                     _logger.LogError("Directory does not exist: '{Path}'", path);
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             $"Directory does not exist: '{path}'"
@@ -132,7 +132,7 @@ namespace TiaPortalMcpServer
                 // Check if a project is already open
                 if (_sessionManager.HasOpenProject())
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.AlreadyOpen,
                             $"A project is already open: {_sessionManager.CurrentProjectPath}. Close it first."
@@ -156,7 +156,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Project '{ProjectName}' created successfully at '{ProjectPath}'", name, projectPath);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = name,
@@ -168,7 +168,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error creating project '{Name}' at path '{Path}'", name, path);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error creating project: {comEx.Message}",
@@ -179,7 +179,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating project '{Name}' at path '{Path}'", name, path);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error creating project: {ex.Message}",
@@ -190,7 +190,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Open an existing TIA Portal project file for editing. If projectPath is missing and client supports MCP Apps/elicitation, the server will prompt for it. Returns project metadata including name, path, and version. Prerequisites: Project file must exist, no other project currently open. Use this before any device, block, or tag operations. Supports .ap18, .ap17, .ap16 formats.")]
-        public async Task<string> projects_open(
+        public async Task<CallToolResult> projects_open(
             McpServer server,
             [Description("Path to the project file (.ap18, .ap17, etc.)")] string? projectPath,
             CancellationToken cancellationToken)
@@ -201,7 +201,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide projectPath or use a client with MCP Apps/elicitation support."
@@ -229,7 +229,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -246,7 +246,7 @@ namespace TiaPortalMcpServer
 
                 if (string.IsNullOrWhiteSpace(projectPath))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
                             "Project path was not provided."
@@ -259,7 +259,7 @@ namespace TiaPortalMcpServer
             {
                 if (!File.Exists(projectPath))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.ProjectNotFound,
                             $"Project file not found: {projectPath}"
@@ -271,7 +271,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Project opened successfully: {ProjectName}", project.Name);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = project.Name,
@@ -284,7 +284,7 @@ namespace TiaPortalMcpServer
             catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
             {
                 _logger.LogWarning("Attempted to open project while one is already open");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.AlreadyOpen,
                         opEx.Message
@@ -294,7 +294,7 @@ namespace TiaPortalMcpServer
             catch (FileNotFoundException fnfEx)
             {
                 _logger.LogError(fnfEx, "Project file not found: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ProjectNotFound,
                         fnfEx.Message
@@ -304,7 +304,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error opening project: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error opening project: {comEx.Message}",
@@ -315,7 +315,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error opening project: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error opening project: {ex.Message}",
@@ -326,7 +326,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Open an existing TIA Portal project file and automatically upgrade it to the current TIA Portal version if needed. Use this when opening projects created in older TIA Portal versions. Returns upgraded project metadata. Prerequisites: Project file must exist, no other project currently open. Warning: Upgrade is permanent; backup project first.")]
-        public string projects_open_with_upgrade(
+        public CallToolResult projects_open_with_upgrade(
             [Description("Path to the project file (.ap18, .ap17, etc.)")] string projectPath)
         {
             _logger.LogInformation("projects_open_with_upgrade called with projectPath='{ProjectPath}'", projectPath);
@@ -335,7 +335,7 @@ namespace TiaPortalMcpServer
             {
                 if (!File.Exists(projectPath))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.ProjectNotFound,
                             $"Project file not found: {projectPath}"
@@ -347,7 +347,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Project opened with upgrade successfully: {ProjectName}", project.Name);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = project.Name,
@@ -360,7 +360,7 @@ namespace TiaPortalMcpServer
             catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
             {
                 _logger.LogWarning("Attempted to open project while one is already open");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.AlreadyOpen,
                         opEx.Message
@@ -370,7 +370,7 @@ namespace TiaPortalMcpServer
             catch (FileNotFoundException fnfEx)
             {
                 _logger.LogError(fnfEx, "Project file not found: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ProjectNotFound,
                         fnfEx.Message
@@ -380,7 +380,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error opening project with upgrade: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error opening project with upgrade: {comEx.Message}",
@@ -391,7 +391,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error opening project with upgrade: {ProjectPath}", projectPath);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error opening project with upgrade: {ex.Message}",
@@ -402,7 +402,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Save all changes to the currently open TIA Portal project. Returns confirmation with project name. Prerequisites: A project must be open. Best practice: Call this after making modifications (adding blocks, tags, devices) to persist changes before closing or compiling.")]
-        public string projects_save()
+        public CallToolResult projects_save()
         {
             _logger.LogInformation("projects_save called");
 
@@ -410,7 +410,7 @@ namespace TiaPortalMcpServer
             {
                 if (!_sessionManager.HasOpenProject())
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -423,7 +423,7 @@ namespace TiaPortalMcpServer
                 var projectName = _sessionManager.CurrentProject?.Name;
                 _logger.LogInformation("Project saved successfully: {ProjectName}", projectName);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = projectName,
@@ -434,7 +434,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error saving project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error saving project: {comEx.Message}",
@@ -445,7 +445,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error saving project: {ex.Message}",
@@ -456,7 +456,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Close the currently open TIA Portal project and release resources. Returns confirmation with closed project name. Prerequisites: A project must be open. Note: Unsaved changes will be lost unless projects_save was called first. Recommended before opening a different project.")]
-        public string projects_close()
+        public CallToolResult projects_close()
         {
             _logger.LogInformation("projects_close called");
 
@@ -464,7 +464,7 @@ namespace TiaPortalMcpServer
             {
                 if (!_sessionManager.HasOpenProject())
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open"
@@ -477,7 +477,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Project closed successfully: {ProjectName}", projectName);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         projectName = projectName,
@@ -488,7 +488,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error closing project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error closing project: {comEx.Message}",
@@ -499,7 +499,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error closing project");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error closing project: {ex.Message}",
@@ -510,7 +510,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Retrieve current TIA Portal session information including whether a project is open, project name, path, and portal instance status. Returns session metadata. No prerequisites. Use this to check session state before performing operations that require an open project.")]
-        public string projects_get_session_info()
+        public CallToolResult projects_get_session_info()
         {
             _logger.LogInformation("projects_get_session_info called");
 
@@ -518,7 +518,7 @@ namespace TiaPortalMcpServer
             {
                 var (hasProject, projectName, projectPath) = _sessionManager.GetSessionInfo();
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         hasOpenProject = hasProject,
@@ -531,7 +531,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting session info");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error getting session info: {ex.Message}",

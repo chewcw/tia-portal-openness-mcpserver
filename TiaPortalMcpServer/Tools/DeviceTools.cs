@@ -35,7 +35,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
-        public async Task<string> devices_list(
+        public async Task<CallToolResult> devices_list(
             McpServer server,
             CancellationToken cancellationToken = default)
         {
@@ -60,7 +60,7 @@ namespace TiaPortalMcpServer
 
                 _logger.LogInformation("Found {Count} devices in project", devices.Count);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceCount = devices.Count,
@@ -71,7 +71,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error listing devices");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error listing devices: {comEx.Message}",
@@ -82,7 +82,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error listing devices");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error listing devices: {ex.Message}",
@@ -93,7 +93,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/orderNumber are missing, prompts for them. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
-        public async Task<string> devices_create(
+        public async Task<CallToolResult> devices_create(
             McpServer server,
             [Description("Device name")] string? deviceName,
             [Description("Device order number (e.g., '6ES7 515-2AM02-0AB0')")] string? orderNumber,
@@ -112,7 +112,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName/orderNumber or use a client with MCP Apps/elicitation support."
@@ -146,7 +146,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -173,7 +173,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(orderNumber))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName and orderNumber are required."
@@ -186,7 +186,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -196,7 +196,7 @@ namespace TiaPortalMcpServer
 
                 if (dryRun)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
@@ -207,7 +207,7 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.NotImplemented,
                         "Device creation requires hardware catalog integration. Use dry-run mode to validate order numbers."
@@ -217,7 +217,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error creating device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error creating device: {comEx.Message}",
@@ -228,7 +228,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error creating device: {ex.Message}",
@@ -239,7 +239,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
-        public async Task<string> devices_delete(
+        public async Task<CallToolResult> devices_delete(
             McpServer server,
             [Description("Device name")] string? deviceName,
             [Description("Whether to perform a dry run (true = validate only, false = delete device)")] bool dryRun = false,
@@ -257,7 +257,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
@@ -285,7 +285,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -303,7 +303,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName is required."
@@ -316,7 +316,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -327,7 +327,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -337,7 +337,7 @@ namespace TiaPortalMcpServer
 
                 if (dryRun)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
@@ -361,7 +361,7 @@ namespace TiaPortalMcpServer
                     _logger.LogWarning(saveEx, "Failed to save project after device deletion");
                 }
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -372,7 +372,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error deleting device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error deleting device: {comEx.Message}",
@@ -383,7 +383,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error deleting device: {ex.Message}",
@@ -393,7 +393,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        private async Task<string?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)
+        private async Task<CallToolResult?> EnsureProjectOpenAsync(McpServer server, CancellationToken cancellationToken)
         {
             if (_sessionManager.CurrentProject != null)
             {
@@ -402,7 +402,7 @@ namespace TiaPortalMcpServer
 
             if (server == null || server.ClientCapabilities?.Elicitation == null)
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.NoProject,
                         "No project is currently open"
@@ -430,7 +430,7 @@ namespace TiaPortalMcpServer
 
             if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.UserCancelled,
                         "User cancelled or declined the request."
@@ -448,7 +448,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(projectPath))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "Project path was not provided."
@@ -460,7 +460,7 @@ namespace TiaPortalMcpServer
             {
                 if (!File.Exists(projectPath))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.ProjectNotFound,
                             $"Project file not found: {projectPath}"
@@ -476,7 +476,7 @@ namespace TiaPortalMcpServer
             }
             catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.AlreadyOpen,
                         opEx.Message
@@ -485,7 +485,7 @@ namespace TiaPortalMcpServer
             }
             catch (FileNotFoundException fnfEx)
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ProjectNotFound,
                         fnfEx.Message
@@ -494,7 +494,7 @@ namespace TiaPortalMcpServer
             }
             catch (COMException comEx)
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error opening project: {comEx.Message}",
@@ -504,7 +504,7 @@ namespace TiaPortalMcpServer
             }
             catch (Exception ex)
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error opening project: {ex.Message}",
@@ -515,7 +515,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
-        public async Task<string> devices_get_attributes(
+        public async Task<CallToolResult> devices_get_attributes(
             McpServer server,
             [Description("Device name")] string? deviceName,
             CancellationToken cancellationToken = default)
@@ -532,7 +532,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
@@ -560,7 +560,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -578,7 +578,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName is required."
@@ -591,7 +591,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -602,7 +602,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -612,7 +612,7 @@ namespace TiaPortalMcpServer
 
                 var attributes = GetDeviceAttributes(device);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -624,7 +624,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error getting attributes for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error getting device attributes: {comEx.Message}",
@@ -635,7 +635,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting attributes for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error getting device attributes: {ex.Message}",
@@ -646,7 +646,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/attributeName/attributeValue are missing, prompts for them. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
-        public async Task<string> devices_set_attribute(
+        public async Task<CallToolResult> devices_set_attribute(
             McpServer server,
             [Description("Device name")] string? deviceName,
             [Description("Attribute name")] string? attributeName,
@@ -666,7 +666,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName/attributeName/attributeValue or use a client with MCP Apps/elicitation support."
@@ -707,7 +707,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -742,7 +742,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(attributeName) || string.IsNullOrWhiteSpace(attributeValue))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName, attributeName, and attributeValue are required."
@@ -755,7 +755,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -766,7 +766,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -780,7 +780,7 @@ namespace TiaPortalMcpServer
                     var attributes = GetDeviceAttributes(device);
                     if (!attributes.ContainsKey(attributeName) && !string.Equals(attributeName, "Name", StringComparison.OrdinalIgnoreCase))
                     {
-                        return JsonConvert.SerializeObject(
+                        return McpToolResults.From(
                             ToolResponse<object>.CreateError(
                                 ErrorCodes.InvalidParameter,
                                 $"Attribute '{attributeName}' not found on device '{deviceName}'"
@@ -788,7 +788,7 @@ namespace TiaPortalMcpServer
                         );
                     }
 
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
@@ -802,7 +802,7 @@ namespace TiaPortalMcpServer
 
                 SetDeviceAttribute(device, attributeName, attributeValue);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -815,7 +815,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error setting attribute '{AttributeName}' on device '{DeviceName}'", attributeName, deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error setting device attribute: {comEx.Message}",
@@ -826,7 +826,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting attribute '{AttributeName}' on device '{DeviceName}'", attributeName, deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error setting device attribute: {ex.Message}",
@@ -837,7 +837,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
-        public async Task<string> devices_get_app_id(
+        public async Task<CallToolResult> devices_get_app_id(
             McpServer server,
             [Description("Device name")] string? deviceName,
             CancellationToken cancellationToken = default)
@@ -854,7 +854,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName or use a client with MCP Apps/elicitation support."
@@ -882,7 +882,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -900,7 +900,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName is required."
@@ -913,7 +913,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -924,7 +924,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -934,7 +934,7 @@ namespace TiaPortalMcpServer
 
                 var appId = GetDeviceAppId(device);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -946,7 +946,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error getting App ID for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error getting device App ID: {comEx.Message}",
@@ -957,7 +957,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting App ID for device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error getting device App ID: {ex.Message}",
@@ -968,7 +968,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/appId are missing, prompts for them. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
-        public async Task<string> devices_set_app_id(
+        public async Task<CallToolResult> devices_set_app_id(
             McpServer server,
             [Description("Device name")] string? deviceName,
             [Description("App ID value")] string? appId,
@@ -987,7 +987,7 @@ namespace TiaPortalMcpServer
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.OperationNotSupported,
                             "Client does not support elicitation. Provide deviceName/appId or use a client with MCP Apps/elicitation support."
@@ -1021,7 +1021,7 @@ namespace TiaPortalMcpServer
 
                 if (!string.Equals(response.Action, "accept", StringComparison.OrdinalIgnoreCase))
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.UserCancelled,
                             "User cancelled or declined the request."
@@ -1048,7 +1048,7 @@ namespace TiaPortalMcpServer
 
             if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(appId))
             {
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.InvalidParameter,
                         "deviceName and appId are required."
@@ -1061,7 +1061,7 @@ namespace TiaPortalMcpServer
                 var project = _sessionManager.CurrentProject;
                 if (project == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.NoProject,
                             "No project is currently open. Use projects_open first."
@@ -1072,7 +1072,7 @@ namespace TiaPortalMcpServer
                 var device = project.Devices.FirstOrDefault(d => d.Name == deviceName);
                 if (device == null)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.DeviceNotFound,
                             $"Device '{deviceName}' not found in project"
@@ -1082,7 +1082,7 @@ namespace TiaPortalMcpServer
 
                 if (dryRun)
                 {
-                    return JsonConvert.SerializeObject(
+                    return McpToolResults.From(
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
@@ -1095,7 +1095,7 @@ namespace TiaPortalMcpServer
 
                 SetDeviceAppId(device, appId);
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
@@ -1107,7 +1107,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error setting App ID on device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error setting device App ID: {comEx.Message}",
@@ -1118,7 +1118,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting App ID on device '{DeviceName}'", deviceName);
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error setting device App ID: {ex.Message}",
@@ -1129,7 +1129,7 @@ namespace TiaPortalMcpServer
         }
 
         [McpServerTool, Description("Search the TIA Portal hardware catalog for devices and modules by article number, order number, product name, or partial match. Returns list of matching catalog entries with order numbers, descriptions, type identifiers, and versions. No prerequisites. Use this to discover valid order numbers before devices_create. Essential for finding correct hardware part numbers for device creation.")]
-        public string devices_search_catalog(
+        public CallToolResult devices_search_catalog(
             [Description("Search term (device name, order number, or partial match)")] string searchTerm,
             [Description("Maximum number of results to return")] int maxResults = 50)
         {
@@ -1139,7 +1139,7 @@ namespace TiaPortalMcpServer
             {
                 var results = SearchHardwareCatalog(searchTerm);
 
-                // return JsonConvert.SerializeObject(
+                // return McpToolResults.From(
                     // ToolResponse<object>.CreateSuccess(new
                     // {
                         // articleNumbers = results.Select(x => x).ToList(),
@@ -1157,7 +1157,7 @@ namespace TiaPortalMcpServer
                     version = item.Version,
                 }).ToList();
 
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         searchTerm = searchTerm,
@@ -1171,7 +1171,7 @@ namespace TiaPortalMcpServer
             catch (COMException comEx)
             {
                 _logger.LogError(comEx, "COM error searching hardware catalog");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.ComError,
                         $"COM error searching catalog: {comEx.Message}",
@@ -1182,7 +1182,7 @@ namespace TiaPortalMcpServer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching hardware catalog");
-                return JsonConvert.SerializeObject(
+                return McpToolResults.From(
                     ToolResponse<object>.CreateError(
                         ErrorCodes.TiaError,
                         $"Error searching catalog: {ex.Message}",
