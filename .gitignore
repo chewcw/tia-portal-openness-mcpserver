@@ -46,7 +46,27 @@ TestResults/
 # Publish
 publish/
 
+local-artifacts/
+# Node.js
 node_modules/
-.agents/
+npm-debug.log*
+yarn-error.log
+.npm
+.yarn-integrity
+dist/
+build/
+.cache/
+.eslintcache
+.parcel-cache/
 
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Package locks
+package-lock.json
+yarn.lock
+
+.agents/
 local-artifacts/
