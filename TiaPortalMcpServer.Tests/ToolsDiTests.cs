@@ -1,8 +1,11 @@
-using System.Reflection;
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ModelContextProtocol.Protocol;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using TiaPortalMcpServer.Models;
 using TiaPortalMcpServer.Services;
 using TiaPortalMcpServer.Extensions;
 using Serilog;
@@ -11,8 +14,15 @@ using Serilog.Events;
 namespace TiaPortalMcpServer.Tests
 {
     [Trait("Category", "Unit")]
-    public class ToolsDiTests : TestBase
+    public class ToolsDiTests
     {
+        private static ToolResponse<T> ParseToolResult<T>(CallToolResult result)
+        {
+            var json = result.StructuredContent.ToString();
+            return JsonConvert.DeserializeObject<ToolResponse<T>>(json)
+                ?? throw new InvalidOperationException("Failed to deserialize tool result.");
+        }
+
         [Fact]
         public void Tool_types_are_resolvable_from_service_provider()
         {
