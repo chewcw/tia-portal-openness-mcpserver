@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _softwareTools.software_add_block("TestDevice", "FC", "TestBlock");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _softwareTools.blocks_list("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -61,7 +61,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _softwareTools.software_get_block_hierarchy("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -77,7 +77,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _softwareTools.software_add_block("TestDevice", "FB", "TestBlock");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }

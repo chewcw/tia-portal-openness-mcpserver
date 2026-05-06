@@ -69,7 +69,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _tagTools.tags_tagtable_create(null, "TestDevice", "TestTable", cancellationToken: CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }

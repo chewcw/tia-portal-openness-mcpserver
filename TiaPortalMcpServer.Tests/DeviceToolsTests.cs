@@ -32,7 +32,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_list(null, CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -48,7 +48,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_create(null, "TestDevice", "TestType", cancellationToken: CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -64,7 +64,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_delete(null, "TestDevice", cancellationToken: CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -80,7 +80,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_get_attributes(null, "TestDevice", CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -96,7 +96,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_set_attribute(null, "TestDevice", "TestAttribute", "TestValue", cancellationToken: CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -112,7 +112,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_get_app_id(null, "TestDevice", CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -128,7 +128,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _deviceTools.devices_set_app_id(null, "TestDevice", "TestAppId", cancellationToken: CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -140,7 +140,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceTools.devices_search_catalog("CPU");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
         }

@@ -41,7 +41,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_list();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -68,7 +68,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_list();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
 
@@ -97,7 +97,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_get("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -123,7 +123,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_get("NonExistentDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.DeviceNotFound, response.ErrorCode);
         }
@@ -151,7 +151,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_get(testDeviceName);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
 
@@ -179,7 +179,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_validate("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -204,7 +204,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_validate("NonExistentDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.DeviceNotFound, response.ErrorCode);
         }
@@ -231,7 +231,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _hmiTargetTools.hmi_targets_validate(testDeviceName);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
 

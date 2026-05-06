@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _blocksTools.blocks_prodiag_assigned_get("TestDevice", "TestMember", "db");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _blocksTools.blocks_prodiag_assigned_set("TestDevice", "TestMember", "db", "TestFb");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -61,7 +61,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _blocksTools.blocks_system_types_list("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -77,7 +77,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _blocksTools.blocks_source_generate_from_block("TestDevice", "TestBlock");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }

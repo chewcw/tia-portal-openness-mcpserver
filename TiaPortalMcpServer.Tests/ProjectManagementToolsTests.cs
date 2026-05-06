@@ -34,7 +34,7 @@ namespace TiaPortalMcpServer.Tests
             var result = await _projectTools.projects_create(null, "TestProject", "C:\\Temp", CancellationToken.None);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
         }
 
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer.Tests
             // For now, test with invalid path to check error handling
             var result = await _projectTools.projects_open(null, "InvalidPath", CancellationToken.None);
 
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             // Should fail with invalid path
             Assert.False(response.Success);
         }
@@ -61,7 +61,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _projectTools.projects_save();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -77,7 +77,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _projectTools.projects_close();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -89,7 +89,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _projectTools.projects_get_session_info();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
         }

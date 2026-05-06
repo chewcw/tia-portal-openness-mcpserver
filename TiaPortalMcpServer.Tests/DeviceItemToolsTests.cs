@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.deviceitems_list("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.deviceitems_get_attributes("TestDevice", "TestItem");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -57,7 +57,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.catalog_search_device_items("CPU");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.True(response.Success);
             Assert.NotNull(response.Data);
         }
@@ -73,7 +73,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.deviceitems_plug_move("TestDevice", "TestItem", 1);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -89,7 +89,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.deviceitems_copy("TestDevice", "TestItem", 1);
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -105,7 +105,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _deviceItemTools.deviceitems_delete("TestDevice", "TestItem");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }

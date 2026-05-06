@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _compilationTools.compilation_project();
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
@@ -45,7 +45,7 @@ namespace TiaPortalMcpServer.Tests
             var result = _compilationTools.compilation_software("TestDevice");
 
             // Assert
-            var response = JsonConvert.DeserializeObject<ToolResponse<object>>(result);
+            var response = ParseToolResult<object>(result);
             Assert.False(response.Success);
             Assert.Equal(ErrorCodes.NoProject, response.ErrorCode);
         }
