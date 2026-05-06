@@ -78,7 +78,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Creates a new PLC tag table.
         /// </summary>
-        [McpServerTool, Description("Create a new PLC tag table for organizing global tags with optional parent group placement. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/tagTableName are missing, prompts for them. Returns tag table operation result with name and creation details. Prerequisites: Project must be open, device must exist, tag table name must be unique. Use groupName parameter to create in user-defined groups for hierarchical organization. Essential for structured tag management in large projects.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Create a new PLC tag table for organizing global tags with optional parent group placement. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/tagTableName are missing, prompts for them. Returns tag table operation result with name and creation details. Prerequisites: Project must be open, device must exist, tag table name must be unique. Use groupName parameter to create in user-defined groups for hierarchical organization. Essential for structured tag management in large projects.")]
         public async Task<CallToolResult> tags_tagtable_create(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -184,11 +184,16 @@ namespace TiaPortalMcpServer
                         ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
                 }
 
-                var plcSoftware = GetPlcSoftware(deviceName);
+                if (deviceName is not string resolvedDeviceName || string.IsNullOrWhiteSpace(resolvedDeviceName))
+                {
+                    return McpToolResults.From(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.InvalidParameter, "deviceName is required"));
+                }
+                var plcSoftware = GetPlcSoftware(resolvedDeviceName);
                 if (plcSoftware == null)
                 {
                     return McpToolResults.From(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{resolvedDeviceName}' not found"));
                 }
 
                 PlcTagTable? newTable = null;
@@ -241,7 +246,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Enumerates all tag tables in a specific group.
         /// </summary>
-        [McpServerTool, Description("Enumerate all PLC tag tables within a specific group (system group or user-defined group) with optional tag counts. Returns list of tag table info with names, modification timestamps, tag counts, and constant counts. Prerequisites: Project must be open, device must exist. Use includeCounts=false for faster enumeration without counting tags. Use this to discover tag organization before tag operations.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate all PLC tag tables within a specific group (system group or user-defined group) with optional tag counts. Returns list of tag table info with names, modification timestamps, tag counts, and constant counts. Prerequisites: Project must be open, device must exist. Use includeCounts=false for faster enumeration without counting tags. Use this to discover tag organization before tag operations.")]
         public CallToolResult tags_tagtable_list(
             [Description("Device name")] string deviceName,
             [Description("Optional group name (empty for system group)")] string groupName = "",
@@ -317,7 +322,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Gets detailed information about a specific tag table.
         /// </summary>
-        [McpServerTool, Description("Retrieve detailed metadata for a specific PLC tag table including name, default status, modification timestamp, tag count, and constant counts. Returns tag table information object. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to inspect tag table properties before modification or for tag table inventory documentation.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Retrieve detailed metadata for a specific PLC tag table including name, default status, modification timestamp, tag count, and constant counts. Returns tag table information object. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to inspect tag table properties before modification or for tag table inventory documentation.")]
         public CallToolResult tags_tagtable_get(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -396,7 +401,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Deletes a PLC tag table (cannot delete default table).
         /// </summary>
-        [McpServerTool, Description("Delete a PLC tag table and all its tags and constants from the project. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist and not be default table. Warning: Default tag tables cannot be deleted. Deletion removes all contained tags permanently. Backup project first or check isDefault property via tags_tagtable_get.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Delete a PLC tag table and all its tags and constants from the project. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist and not be default table. Warning: Default tag tables cannot be deleted. Deletion removes all contained tags permanently. Backup project first or check isDefault property via tags_tagtable_get.")]
         public CallToolResult tags_tagtable_delete(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -492,7 +497,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Exports a tag table to SimaticML file.
         /// </summary>
-        [McpServerTool, Description("Export a PLC tag table to Simatic ML format (.xml file) for version control, backup, or import into other projects. Returns operation result with export path. Prerequisites: Project must be open, device must exist, tag table must exist, export directory must be writable. Note: Implementation may require TIA Portal export API configuration. Use for tag documentation and reuse.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Export a PLC tag table to Simatic ML format (.xml file) for version control, backup, or import into other projects. Returns operation result with export path. Prerequisites: Project must be open, device must exist, tag table must exist, export directory must be writable. Note: Implementation may require TIA Portal export API configuration. Use for tag documentation and reuse.")]
         public CallToolResult tags_tagtable_export(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -588,7 +593,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Opens a tag table in the TIA Portal editor.
         /// </summary>
-        [McpServerTool, Description("Open a PLC tag table in the TIA Portal graphical editor for manual tag editing and inspection. Returns operation confirmation. Prerequisites: Project must be open, device must exist, tag table must exist, TIA Portal UI must be accessible. Use this when programmatic tag operations are insufficient and visual editing/verification is required. Opens in active TIA Portal instance.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Open a PLC tag table in the TIA Portal graphical editor for manual tag editing and inspection. Returns operation confirmation. Prerequisites: Project must be open, device must exist, tag table must exist, TIA Portal UI must be accessible. Use this when programmatic tag operations are insufficient and visual editing/verification is required. Opens in active TIA Portal instance.")]
         public CallToolResult tags_tagtable_open_editor(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -671,7 +676,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Gets the system group information for PLC tags.
         /// </summary>
-        [McpServerTool, Description("Retrieve system group information for PLC tags including top-level tag tables and immediate subgroups. Returns tag group info with table names and subgroup names. Prerequisites: Project must be open, device must exist. Use this as starting point to understand project tag organization before navigating user-defined groups or tag tables.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Retrieve system group information for PLC tags including top-level tag tables and immediate subgroups. Returns tag group info with table names and subgroup names. Prerequisites: Project must be open, device must exist. Use this as starting point to understand project tag organization before navigating user-defined groups or tag tables.")]
         public CallToolResult tags_group_system_get(
             [Description("Device name")] string deviceName)
         {
@@ -722,7 +727,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Enumerates user-defined tag groups.
         /// </summary>
-        [McpServerTool, Description("Enumerate user-defined PLC tag groups for hierarchical tag table organization. Returns list of tag group info with names, tag table counts, and subgroup structures. Prerequisites: Project must be open, device must exist. Set recursive=true for full hierarchy traversal, false for immediate children only. Use this to navigate complex tag folder structures in large projects.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate user-defined PLC tag groups for hierarchical tag table organization. Returns list of tag group info with names, tag table counts, and subgroup structures. Prerequisites: Project must be open, device must exist. Set recursive=true for full hierarchy traversal, false for immediate children only. Use this to navigate complex tag folder structures in large projects.")]
         public CallToolResult tags_group_list(
             [Description("Device name")] string deviceName,
             [Description("Optional parent group name (empty for top-level)")] string parentGroupName = "",
@@ -810,7 +815,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Creates a new user-defined tag group.
         /// </summary>
-        [McpServerTool, Description("Create a new user-defined PLC tag group for organizing tag tables hierarchically. Returns tag operation result. Prerequisites: Project must be open, device must exist, group name must be unique within parent scope. Use parentGroupName parameter for nested folder structures. Essential for organizing tags by function, area, or discipline in structured projects.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Create a new user-defined PLC tag group for organizing tag tables hierarchically. Returns tag operation result. Prerequisites: Project must be open, device must exist, group name must be unique within parent scope. Use parentGroupName parameter for nested folder structures. Essential for organizing tags by function, area, or discipline in structured projects.")]
         public CallToolResult tags_group_create(
             [Description("Device name")] string deviceName,
             [Description("Group name")] string groupName,
@@ -892,7 +897,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Finds a specific user-defined tag group by name.
         /// </summary>
-        [McpServerTool, Description("Find and retrieve information about a specific user-defined PLC tag group including contained tag tables and subgroups. Returns tag group info. Prerequisites: Project must be open, device must exist, group must exist. Use this to verify group existence before operations or to inspect group contents for navigation and validation.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Find and retrieve information about a specific user-defined PLC tag group including contained tag tables and subgroups. Returns tag group info. Prerequisites: Project must be open, device must exist, group must exist. Use this to verify group existence before operations or to inspect group contents for navigation and validation.")]
         public CallToolResult tags_group_find(
             [Description("Device name")] string deviceName,
             [Description("Group name to find")] string groupName,
@@ -973,7 +978,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Deletes a user-defined tag group.
         /// </summary>
-        [McpServerTool, Description("Delete a user-defined PLC tag group and optionally all contained tag tables and subgroups. Returns tag operation result. Prerequisites: Project must be open, device must exist, group must exist. Warning: Deletion may fail if group contains tag tables or subgroups; empty group first or check contents with tags_group_find. System group cannot be deleted.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Delete a user-defined PLC tag group and optionally all contained tag tables and subgroups. Returns tag operation result. Prerequisites: Project must be open, device must exist, group must exist. Warning: Deletion may fail if group contains tag tables or subgroups; empty group first or check contents with tags_group_find. System group cannot be deleted.")]
         public CallToolResult tags_group_delete(
             [Description("Device name")] string deviceName,
             [Description("Group name to delete")] string groupName,
@@ -1067,7 +1072,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Enumerates all tags in a specific tag table.
         /// </summary>
-        [McpServerTool, Description("Enumerate all PLC tags within a specific tag table including names, data types, addresses, and external visibility. Returns list of tag info objects. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to inspect tag definitions before tag operations, for tag inventory, or to discover available tags for HMI or block connections.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate all PLC tags within a specific tag table including names, data types, addresses, and external visibility. Returns list of tag info objects. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to inspect tag definitions before tag operations, for tag inventory, or to discover available tags for HMI or block connections.")]
         public CallToolResult tags_list(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -1148,7 +1153,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Enumerates user-defined constants in a tag table.
         /// </summary>
-        [McpServerTool, Description("Enumerate all user-defined constants in a PLC tag table for named constant values. Returns list of constant info objects with names, data types, and values. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to discover available constants for use in blocks, expressions, or HMI screens. User-defined constants are project-specific named values.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate all user-defined constants in a PLC tag table for named constant values. Returns list of constant info objects with names, data types, and values. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to discover available constants for use in blocks, expressions, or HMI screens. User-defined constants are project-specific named values.")]
         public CallToolResult tags_constants_user_list(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -1229,7 +1234,7 @@ namespace TiaPortalMcpServer
         /// <summary>
         /// Enumerates system constants in a tag table.
         /// </summary>
-        [McpServerTool, Description("Enumerate all system-defined constants in a PLC tag table for built-in constant values. Returns list of constant info objects. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to discover available system constants provided by TIA Portal or CPU firmware. System constants are predefined, read-only values for standard functions.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate all system-defined constants in a PLC tag table for built-in constant values. Returns list of constant info objects. Prerequisites: Project must be open, device must exist, tag table must exist. Use this to discover available system constants provided by TIA Portal or CPU firmware. System constants are predefined, read-only values for standard functions.")]
         public CallToolResult tags_constants_system_list(
             [Description("Device name")] string deviceName,
             [Description("Tag table name")] string tagTableName,
@@ -1307,7 +1312,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Create a new PLC tag in a tag table with specified name, data type, and optional address/properties. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If required fields are missing, prompts for them. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist, tag name must be unique, data type must be valid. Note: Full implementation may require extended parameters for address, retention, external access. Use for programmatic tag creation.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Create a new PLC tag in a tag table with specified name, data type, and optional address/properties. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If required fields are missing, prompts for them. Returns tag operation result. Prerequisites: Project must be open, device must exist, tag table must exist, tag name must be unique, data type must be valid. Note: Full implementation may require extended parameters for address, retention, external access. Use for programmatic tag creation.")]
         public async Task<CallToolResult> tags_create(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -1432,7 +1437,7 @@ namespace TiaPortalMcpServer
                     response.Content.TryGetValue("logicalAddress", out var logicalAddressElement) &&
                     logicalAddressElement.ValueKind == JsonValueKind.String)
                 {
-                    logicalAddress = logicalAddressElement.GetString();
+                    logicalAddress = logicalAddressElement.GetString() ?? string.Empty;
                 }
             }
 
@@ -1457,10 +1462,14 @@ namespace TiaPortalMcpServer
                     return McpToolResults.From(
                         ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.NoProject, "No project is currently open"));
 
-                var plcSoftware = GetPlcSoftware(deviceName);
+                if (deviceName is not string resolvedDeviceName || string.IsNullOrWhiteSpace(resolvedDeviceName))
+                    return McpToolResults.From(
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.InvalidParameter, "deviceName is required"));
+
+                var plcSoftware = GetPlcSoftware(resolvedDeviceName);
                 if (plcSoftware == null)
                     return McpToolResults.From(
-                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{deviceName}' not found"));
+                        ToolResponse<TagOperationResult?>.CreateError(ErrorCodes.DeviceNotFound, $"Device '{resolvedDeviceName}' not found"));
 
                 PlcTagTable? table = null;
                 if (string.IsNullOrEmpty(groupName))
@@ -1586,7 +1595,17 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                _sessionManager.OpenProject(projectPath);
+                if (projectPath is not string resolvedProjectPath || string.IsNullOrWhiteSpace(resolvedProjectPath))
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.InvalidParameter,
+                            "Project path was not provided."
+                        )
+                    );
+                }
+
+                _sessionManager.OpenProject(resolvedProjectPath);
                 return null;
             }
             catch (InvalidOperationException opEx) when (opEx.Message.Contains("already open"))

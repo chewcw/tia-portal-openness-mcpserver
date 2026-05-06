@@ -38,7 +38,7 @@ namespace TiaPortalMcpServer
 
         #region ProDiag Tools
 
-        [McpServerTool, Description("Retrieve the assigned ProDiag Function Block for a specific Data Block member or tag table member. Use this to inspect ProDiag FB assignments for diagnostic monitoring. Returns the ProDiag FB name if assigned, or null. Prerequisites: Project must be open, device must exist, member path must be valid.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Retrieve the assigned ProDiag Function Block for a specific Data Block member or tag table member. Use this to inspect ProDiag FB assignments for diagnostic monitoring. Returns the ProDiag FB name if assigned, or null. Prerequisites: Project must be open, device must exist, member path must be valid.")]
         public CallToolResult blocks_prodiag_assigned_get(
             [Description("Device name")] string deviceName,
             [Description("Path to member (e.g., 'DB_Name.SimpleUdtInstance' or 'ArrayUdtMember.ArrayUdtMember[0]')")] string memberPath,
@@ -86,7 +86,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Assign a ProDiag Function Block to a specific Data Block member or tag table member for diagnostic monitoring integration. Returns success confirmation. Prerequisites: Project must be open, device must exist, ProDiag FB must exist, member path must be valid. Use dryRun=true to validate assignment without making changes.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Assign a ProDiag Function Block to a specific Data Block member or tag table member for diagnostic monitoring integration. Returns success confirmation. Prerequisites: Project must be open, device must exist, ProDiag FB must exist, member path must be valid. Use dryRun=true to validate assignment without making changes.")]
         public CallToolResult blocks_prodiag_assigned_set(
             [Description("Device name")] string deviceName,
             [Description("Path to member (e.g., 'DB_Name.SimpleUdtInstance' or 'ArrayUdtMember.ArrayUdtMember[0]')")] string memberPath,
@@ -147,7 +147,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve ProDiag attributes and configuration for a specific ProDiag Function Block. Returns diagnostic properties including monitoring parameters and alarm settings. Prerequisites: Project must be open, device must exist, ProDiag FB must exist. Use this to inspect ProDiag FB configuration before modification.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Retrieve ProDiag attributes and configuration for a specific ProDiag Function Block. Returns diagnostic properties including monitoring parameters and alarm settings. Prerequisites: Project must be open, device must exist, ProDiag FB must exist. Use this to inspect ProDiag FB configuration before modification.")]
         public CallToolResult blocks_prodiag_attributes_get(
             [Description("Device name")] string deviceName,
             [Description("ProDiag FB name")] string fbName)
@@ -190,7 +190,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Export ProDiag alarm messages from a ProDiag Function Block to CSV format for documentation or external processing. Returns the path to the exported CSV file. Prerequisites: Project must be open, device must exist, ProDiag FB must exist, directory must exist. Use this for alarm documentation and reporting.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Export ProDiag alarm messages from a ProDiag Function Block to CSV format for documentation or external processing. Returns the path to the exported CSV file. Prerequisites: Project must be open, device must exist, ProDiag FB must exist, directory must exist. Use this for alarm documentation and reporting.")]
         public CallToolResult blocks_prodiag_export_csv(
             [Description("Device name")] string deviceName,
             [Description("ProDiag FB name")] string fbName,
@@ -244,7 +244,7 @@ namespace TiaPortalMcpServer
 
         #region External Source Tools
 
-        [McpServerTool, Description("Import an external source file (.awl, .scl, .db, .udt) into the PLC project as an external source object. The source can later be compiled into blocks. Returns the external source object. Prerequisites: Project must be open, device must have PLC software, source file must exist. Supported formats: STL/AWL, SCL, DB, UDT.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Import an external source file (.awl, .scl, .db, .udt) into the PLC project as an external source object. The source can later be compiled into blocks. Returns the external source object. Prerequisites: Project must be open, device must have PLC software, source file must exist. Supported formats: STL/AWL, SCL, DB, UDT.")]
         public CallToolResult blocks_external_source_add(
             [Description("Device name")] string deviceName,
             [Description("Name for the external source")] string name,
@@ -293,7 +293,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("List all external source files in the PLC project. Returns a list of external source objects with their names and paths. Prerequisites: Project must be open, device must have PLC software. Use to check what external sources are available before generating blocks or deleting.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("List all external source files in the PLC project. Returns a list of external source objects with their names and paths. Prerequisites: Project must be open, device must have PLC software. Use to check what external sources are available before generating blocks or deleting.")]
         public CallToolResult blocks_external_source_list(
             [Description("Device name")] string deviceName)
         {
@@ -337,7 +337,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Generate source code files from existing PLC blocks or user-defined types. Exports block logic to .awl, .scl, or appropriate format. Returns the generated file path. Prerequisites: Project must be open, blocks/types must exist. Options: 'WithDependencies' includes called blocks, 'None' only specified blocks. Use for version control, backup, or code review.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Generate source code files from existing PLC blocks or user-defined types. Exports block logic to .awl, .scl, or appropriate format. Returns the generated file path. Prerequisites: Project must be open, blocks/types must exist. Options: 'WithDependencies' includes called blocks, 'None' only specified blocks. Use for version control, backup, or code review.")]
         public CallToolResult blocks_source_generate(
             [Description("Device name")] string deviceName,
             [Description("Block or type names to generate source from")] string[] sourceNames,
@@ -399,7 +399,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Generate source code text representation from a specific PLC block and return as string. Does not create a file. Returns the source code text in the block's programming language. Prerequisites: Project must be open, block must exist. Options: 'WithDependencies' includes dependencies, 'None' only the block. Use for inline code inspection without file operations.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Generate source code text representation from a specific PLC block and return as string. Does not create a file. Returns the source code text in the block's programming language. Prerequisites: Project must be open, block must exist. Options: 'WithDependencies' includes dependencies, 'None' only the block. Use for inline code inspection without file operations.")]
         public CallToolResult blocks_source_generate_from_block(
             [Description("Device name")] string deviceName,
             [Description("Block name")] string blockName,
@@ -447,7 +447,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Compile all external sources in the PLC project into executable blocks. Processes every external source file and generates corresponding block objects. Returns list of generated blocks. Prerequisites: Project must be open, device must have PLC software, external sources must be syntactically valid. Use after adding multiple external sources for batch compilation.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Compile all external sources in the PLC project into executable blocks. Processes every external source file and generates corresponding block objects. Returns list of generated blocks. Prerequisites: Project must be open, device must have PLC software, external sources must be syntactically valid. Use after adding multiple external sources for batch compilation.")]
         public CallToolResult blocks_external_source_generate_all(
             [Description("Device name")] string deviceName)
         {
@@ -493,7 +493,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Compile a specific external source file into executable PLC blocks with generation options. Returns list of generated blocks. Prerequisites: Project must be open, external source must exist. Options: 'None' fails on error, 'KeepOnError' preserves partially generated blocks. Use for controlled, individual external source compilation.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Compile a specific external source file into executable PLC blocks with generation options. Returns list of generated blocks. Prerequisites: Project must be open, external source must exist. Options: 'None' fails on error, 'KeepOnError' preserves partially generated blocks. Use for controlled, individual external source compilation.")]
         public CallToolResult blocks_external_source_generate_with_options(
             [Description("Device name")] string deviceName,
             [Description("External source name")] string sourceName,
@@ -538,7 +538,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Remove an external source file from the PLC project. Returns success confirmation. Prerequisites: Project must be open, external source must exist. Use dryRun=true to validate deletion without removing. Warning: Blocks generated from this source remain but lose source link. Use software_add_block to recreate if needed.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Remove an external source file from the PLC project. Returns success confirmation. Prerequisites: Project must be open, external source must exist. Use dryRun=true to validate deletion without removing. Warning: Blocks generated from this source remain but lose source link. Use software_add_block to recreate if needed.")]
         public CallToolResult blocks_external_source_delete(
             [Description("Device name")] string deviceName,
             [Description("External source name")] string sourceName,
@@ -586,7 +586,7 @@ namespace TiaPortalMcpServer
 
         #region Block Management Tools
 
-        [McpServerTool, Description("Delete a User-Defined Type (UDT) from the PLC project. Returns success confirmation. Prerequisites: Project must be open, UDT must exist. Use dryRun=true to validate deletion without removing. Warning: Deletion fails if UDT is referenced by other blocks or tags. Check dependencies first with blocks_fingerprints_get.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Delete a User-Defined Type (UDT) from the PLC project. Returns success confirmation. Prerequisites: Project must be open, UDT must exist. Use dryRun=true to validate deletion without removing. Warning: Deletion fails if UDT is referenced by other blocks or tags. Check dependencies first with blocks_fingerprints_get.")]
         public CallToolResult blocks_udt_delete(
             [Description("Device name")] string deviceName,
             [Description("UDT name")] string udtName,
@@ -641,7 +641,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Enumerate all system-defined data types available in the PLC software including elementary types, complex types, and hardware types. Returns hierarchical list of system type groups. Prerequisites: Project must be open, device must have PLC software. Use this to discover available data types for tag/block creation.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Enumerate all system-defined data types available in the PLC software including elementary types, complex types, and hardware types. Returns hierarchical list of system type groups. Prerequisites: Project must be open, device must have PLC software. Use this to discover available data types for tag/block creation.")]
         public CallToolResult blocks_system_types_list(
             [Description("Device name")] string deviceName)
         {
@@ -677,7 +677,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Enumerate all user-defined types (UDTs) available in the PLC software. Returns list of UDT names and namespaces. Prerequisites: Project must be open, device must have PLC software. Use this to discover available UDTs for data block creation or tag definitions.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Enumerate all user-defined types (UDTs) available in the PLC software. Returns list of UDT names and namespaces. Prerequisites: Project must be open, device must have PLC software. Use this to discover available UDTs for data block creation or tag definitions.")]
         public CallToolResult blocks_user_types_list(
             [Description("Device name")] string deviceName)
         {
@@ -713,7 +713,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Open a specific PLC block in the TIA Portal graphical editor for manual editing. Returns success confirmation. Prerequisites: Project must be open, block must exist, TIA Portal UI must be accessible. Use this when programmatic modifications are insufficient and visual editing is required. The editor opens in the active TIA Portal instance.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Open a specific PLC block in the TIA Portal graphical editor for manual editing. Returns success confirmation. Prerequisites: Project must be open, block must exist, TIA Portal UI must be accessible. Use this when programmatic modifications are insufficient and visual editing is required. The editor opens in the active TIA Portal instance.")]
         public CallToolResult blocks_editor_open_block(
             [Description("Device name")] string deviceName,
             [Description("Block name")] string blockName)
@@ -756,7 +756,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Open a User-Defined Type (UDT) in the TIA Portal graphical editor for manual editing. Returns success confirmation. Prerequisites: Project must be open, UDT must exist, TIA Portal UI must be accessible. Use this for visual UDT structure editing when programmatic type modifications are not available.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Open a User-Defined Type (UDT) in the TIA Portal graphical editor for manual editing. Returns success confirmation. Prerequisites: Project must be open, UDT must exist, TIA Portal UI must be accessible. Use this for visual UDT structure editing when programmatic type modifications are not available.")]
         public CallToolResult blocks_editor_open_type(
             [Description("Device name")] string deviceName,
             [Description("Type name")] string typeName)
@@ -799,7 +799,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve interface fingerprints for a block or User-Defined Type to track interface version changes. Returns list of fingerprints representing interface structure. Prerequisites: Project must be open, block/UDT must exist. Use this to detect interface changes, manage version compatibility, or validate block dependencies before updates.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Retrieve interface fingerprints for a block or User-Defined Type to track interface version changes. Returns list of fingerprints representing interface structure. Prerequisites: Project must be open, block/UDT must exist. Use this to detect interface changes, manage version compatibility, or validate block dependencies before updates.")]
         public CallToolResult blocks_fingerprints_get(
             [Description("Device name")] string deviceName,
             [Description("Block or UDT name")] string name)
@@ -847,7 +847,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Set the execution priority for an Organization Block (OB) to control task scheduling in the PLC CPU. Returns success confirmation. Prerequisites: Project must be open, OB must exist, priority must be valid for OB type. Use dryRun=true to validate priority value. Valid priorities typically range based on CPU model (e.g., 1-26 for S7-1500).")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Set the execution priority for an Organization Block (OB) to control task scheduling in the PLC CPU. Returns success confirmation. Prerequisites: Project must be open, OB must exist, priority must be valid for OB type. Use dryRun=true to validate priority value. Valid priorities typically range based on CPU model (e.g., 1-26 for S7-1500).")]
         public CallToolResult blocks_ob_priority_set(
             [Description("Device name")] string deviceName,
             [Description("OB block name")] string obName,
@@ -1013,7 +1013,7 @@ namespace TiaPortalMcpServer
 
         #region Group-based Generation Tools
 
-        [McpServerTool, Description("Compile an external source file into blocks within a specific user-defined block group for organized code structure. Returns list of generated blocks. Prerequisites: Project must be open, external source and block group must exist. Options: 'None' fails on error, 'KeepOnError' preserves partial results. Use for organized multi-library projects.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Compile an external source file into blocks within a specific user-defined block group for organized code structure. Returns list of generated blocks. Prerequisites: Project must be open, external source and block group must exist. Options: 'None' fails on error, 'KeepOnError' preserves partial results. Use for organized multi-library projects.")]
         public CallToolResult blocks_external_source_generate_in_group(
             [Description("Device name")] string deviceName,
             [Description("External source name")] string sourceName,

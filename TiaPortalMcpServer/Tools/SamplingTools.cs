@@ -47,7 +47,7 @@ namespace TiaPortalMcpServer
         /// <param name="taskDescription">Description of the TIA Portal task to generate code for</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Generated code snippet</returns>
-        [McpServerTool, Description("Generate TIA Portal Openness API code for a given task")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Generate TIA Portal Openness API code for a given task")]
         public async Task<CallToolResult> sampling_generate_code(
             McpServer server,
             [Description("Description of the TIA Portal task to generate code for")] string taskDescription,
@@ -119,7 +119,7 @@ namespace TiaPortalMcpServer
         /// <param name="server">The MCP server instance for sampling requests</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Project summary and insights</returns>
-        [McpServerTool, Description("Summarize the current TIA Portal project structure and provide insights")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Summarize the current TIA Portal project structure and provide insights")]
         public async Task<CallToolResult> sampling_summarize_project(
             McpServer server,
             CancellationToken cancellationToken)
@@ -223,7 +223,7 @@ namespace TiaPortalMcpServer
         /// <param name="context">Context or question about TIA Portal development</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>AI-generated suggestions and advice</returns>
-        [McpServerTool, Description("Get intelligent suggestions for TIA Portal development tasks")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Get intelligent suggestions for TIA Portal development tasks")]
         public async Task<CallToolResult> sampling_get_suggestions(
             McpServer server,
             [Description("Context or question about TIA Portal development")] string context,

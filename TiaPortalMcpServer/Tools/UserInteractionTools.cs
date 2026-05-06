@@ -23,7 +23,7 @@ namespace TiaPortalMcpServer
             _logger = logger;
         }
 
-        [McpServerTool, Description("Ask the user for missing information using MCP elicitation. Returns a key/value object with the user's responses.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Ask the user for missing information using MCP elicitation. Returns a key/value object with the user's responses.")]
         public async Task<CallToolResult> utilities_elicit_user_input(
             McpServer server,
             [Description("Elicitation request containing message and fields")] ElicitationRequest request,

@@ -33,7 +33,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Create a new TIA Portal project in the specified directory. If name/path are missing and client supports MCP Apps/elicitation, the server will prompt for them. Returns the project path. Prerequisites: Directory must exist, no project currently open. Note: Newly created project is automatically closed after creation; use projects_open to open it for editing.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Create a new TIA Portal project in the specified directory. If name/path are missing and client supports MCP Apps/elicitation, the server will prompt for them. Returns the project path. Prerequisites: Directory must exist, no project currently open. Note: Newly created project is automatically closed after creation; use projects_open to open it for editing.")]
         public async Task<CallToolResult> projects_create(
             McpServer server,
             [Description("Project name")] string? name,
@@ -143,6 +143,15 @@ namespace TiaPortalMcpServer
                 _logger.LogDebug("Creating project '{Name}' at path '{Path}'...", name, path);
 
                 var portal = _portalService.GetOrCreatePortalInstance();
+                if (portal == null)
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "TIA Portal instance is not available."
+                        )
+                    );
+                }
                 var project = portal.Projects.Create(new DirectoryInfo(path), name);
 
                 _logger.LogDebug("Saving project...");
@@ -189,7 +198,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Open an existing TIA Portal project file for editing. If projectPath is missing and client supports MCP Apps/elicitation, the server will prompt for it. Returns project metadata including name, path, and version. Prerequisites: Project file must exist, no other project currently open. Use this before any device, block, or tag operations. Supports .ap18, .ap17, .ap16 formats.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Open an existing TIA Portal project file for editing. If projectPath is missing and client supports MCP Apps/elicitation, the server will prompt for it. Returns project metadata including name, path, and version. Prerequisites: Project file must exist, no other project currently open. Use this before any device, block, or tag operations. Supports .ap18, .ap17, .ap16 formats.")]
         public async Task<CallToolResult> projects_open(
             McpServer server,
             [Description("Path to the project file (.ap18, .ap17, etc.)")] string? projectPath,
@@ -267,7 +276,17 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                var project = _sessionManager.OpenProject(projectPath);
+                if (projectPath is not string resolvedProjectPath || string.IsNullOrWhiteSpace(resolvedProjectPath))
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.InvalidParameter,
+                            "Project path was not provided."
+                        )
+                    );
+                }
+
+                var project = _sessionManager.OpenProject(resolvedProjectPath);
 
                 _logger.LogInformation("Project opened successfully: {ProjectName}", project.Name);
 
@@ -325,7 +344,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Open an existing TIA Portal project file and automatically upgrade it to the current TIA Portal version if needed. Use this when opening projects created in older TIA Portal versions. Returns upgraded project metadata. Prerequisites: Project file must exist, no other project currently open. Warning: Upgrade is permanent; backup project first.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Open an existing TIA Portal project file and automatically upgrade it to the current TIA Portal version if needed. Use this when opening projects created in older TIA Portal versions. Returns upgraded project metadata. Prerequisites: Project file must exist, no other project currently open. Warning: Upgrade is permanent; backup project first.")]
         public CallToolResult projects_open_with_upgrade(
             [Description("Path to the project file (.ap18, .ap17, etc.)")] string projectPath)
         {
@@ -401,7 +420,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Save all changes to the currently open TIA Portal project. Returns confirmation with project name. Prerequisites: A project must be open. Best practice: Call this after making modifications (adding blocks, tags, devices) to persist changes before closing or compiling.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Save all changes to the currently open TIA Portal project. Returns confirmation with project name. Prerequisites: A project must be open. Best practice: Call this after making modifications (adding blocks, tags, devices) to persist changes before closing or compiling.")]
         public CallToolResult projects_save()
         {
             _logger.LogInformation("projects_save called");
@@ -455,7 +474,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Close the currently open TIA Portal project and release resources. Returns confirmation with closed project name. Prerequisites: A project must be open. Note: Unsaved changes will be lost unless projects_save was called first. Recommended before opening a different project.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Close the currently open TIA Portal project and release resources. Returns confirmation with closed project name. Prerequisites: A project must be open. Note: Unsaved changes will be lost unless projects_save was called first. Recommended before opening a different project.")]
         public CallToolResult projects_close()
         {
             _logger.LogInformation("projects_close called");
@@ -509,7 +528,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve current TIA Portal session information including whether a project is open, project name, path, and portal instance status. Returns session metadata. No prerequisites. Use this to check session state before performing operations that require an open project.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Retrieve current TIA Portal session information including whether a project is open, project name, path, and portal instance status. Returns session metadata. No prerequisites. Use this to check session state before performing operations that require an open project.")]
         public CallToolResult projects_get_session_info()
         {
             _logger.LogInformation("projects_get_session_info called");

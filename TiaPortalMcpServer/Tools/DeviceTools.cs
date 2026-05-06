@@ -34,7 +34,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Enumerate all hardware devices in the current TIA Portal project including PLCs, HMIs, IOdevices, and network components. Returns device list with names, type identifiers, and device item counts. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. Prerequisites: Project must be open. Use this as the first step to discover available devices before device-specific operations like compilation, tag management, or block editing.")]
         public async Task<CallToolResult> devices_list(
             McpServer server,
             CancellationToken cancellationToken = default)
@@ -50,6 +50,15 @@ namespace TiaPortalMcpServer
             try
             {
                 var project = _sessionManager.CurrentProject;
+                if (project == null)
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.NoProject,
+                            "No project is currently open. Use projects_open first."
+                        )
+                    );
+                }
 
                 var devices = project.Devices.Select(device => new
                 {
@@ -92,7 +101,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/orderNumber are missing, prompts for them. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Create a new hardware device (PLC, HMI, IO device) in the current project by specifying its order number from the hardware catalog. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/orderNumber are missing, prompts for them. Returns device name and metadata. Prerequisites: Project must be open, order number must be valid. Use dryRun=true to validate order number. Status: Full hardware catalog integration pending; use devices_search_catalog to find valid order numbers, then create device.")]
         public async Task<CallToolResult> devices_create(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -238,7 +247,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Delete a hardware device and all its associated configuration (blocks, tags, networks) from the project. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Returns confirmation. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate deletion safety. Warning: Deletion is permanent and removes all device data including PLC software, HMI screens, and network connections. Backup project first.")]
         public async Task<CallToolResult> devices_delete(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -514,7 +523,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Retrieve all configuration attributes for a specific device including name, type identifier, device item count, and hardware identifiers. Returns attribute dictionary. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to inspect device configuration details before modifications or for device inventory documentation.")]
         public async Task<CallToolResult> devices_get_attributes(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -645,7 +654,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/attributeName/attributeValue are missing, prompts for them. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Modify a specific configuration attribute on a device such as name or hardware properties. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/attributeName/attributeValue are missing, prompts for them. Prerequisites: Project must be open, device must exist, attribute must be settable. Use dryRun=true to validate attribute name and value. Note: Limited attribute setting supported; primarily 'Name' attribute. Use devices_get_attributes to discover available attributes.")]
         public async Task<CallToolResult> devices_set_attribute(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -662,7 +671,7 @@ namespace TiaPortalMcpServer
                 return ensureProjectResult;
             }
 
-            if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(attributeName) || string.IsNullOrWhiteSpace(attributeValue))
+                if (string.IsNullOrWhiteSpace(deviceName) || string.IsNullOrWhiteSpace(attributeName) || string.IsNullOrWhiteSpace(attributeValue))
             {
                 if (server.ClientCapabilities?.Elicitation == null)
                 {
@@ -774,16 +783,19 @@ namespace TiaPortalMcpServer
                     );
                 }
 
+                string resolvedAttributeName = attributeName ?? string.Empty;
+                string resolvedAttributeValue = attributeValue ?? string.Empty;
+
                 if (dryRun)
                 {
                     // Validate that the attribute can be set
                     var attributes = GetDeviceAttributes(device);
-                    if (!attributes.ContainsKey(attributeName) && !string.Equals(attributeName, "Name", StringComparison.OrdinalIgnoreCase))
+                    if (!attributes.ContainsKey(resolvedAttributeName) && !string.Equals(resolvedAttributeName, "Name", StringComparison.OrdinalIgnoreCase))
                     {
                         return McpToolResults.From(
                             ToolResponse<object>.CreateError(
                                 ErrorCodes.InvalidParameter,
-                                $"Attribute '{attributeName}' not found on device '{deviceName}'"
+                                $"Attribute '{resolvedAttributeName}' not found on device '{deviceName}'"
                             )
                         );
                     }
@@ -792,23 +804,23 @@ namespace TiaPortalMcpServer
                         ToolResponse<object>.CreateSuccess(new
                         {
                             deviceName = deviceName,
-                            attributeName = attributeName,
-                            attributeValue = attributeValue,
-                            message = $"Dry run successful: Attribute '{attributeName}' can be set on device '{deviceName}'",
+                            attributeName = resolvedAttributeName,
+                            attributeValue = resolvedAttributeValue,
+                            message = $"Dry run successful: Attribute '{resolvedAttributeName}' can be set on device '{deviceName}'",
                             dryRun = true
                         })
                     );
                 }
 
-                SetDeviceAttribute(device, attributeName, attributeValue);
+                SetDeviceAttribute(device, resolvedAttributeName, resolvedAttributeValue);
 
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
-                        attributeName = attributeName,
-                        attributeValue = attributeValue,
-                        message = $"Attribute '{attributeName}' set successfully on device '{deviceName}'"
+                        attributeName = resolvedAttributeName,
+                        attributeValue = resolvedAttributeValue,
+                        message = $"Attribute '{resolvedAttributeName}' set successfully on device '{deviceName}'"
                     })
                 );
             }
@@ -836,7 +848,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Retrieve the Application ID (App ID) assigned to a device for identification in distributed systems or IoT scenarios. Returns App ID string if set, empty string otherwise. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName is missing, prompts for it. Prerequisites: Project must be open, device must exist. Use this to verify device identification configuration before deployment or for inventory tracking.")]
         public async Task<CallToolResult> devices_get_app_id(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -967,7 +979,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/appId are missing, prompts for them. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Assign an Application ID (App ID) to a device for identification purposes in distributed automation systems or cloud integration. Returns success confirmation. If no project is open and client supports MCP Apps/elicitation, prompts for projectPath. If deviceName/appId are missing, prompts for them. Prerequisites: Project must be open, device must exist. Use dryRun=true to validate App ID format. Use this for device identification in multi-site deployments or IoT scenarios.")]
         public async Task<CallToolResult> devices_set_app_id(
             McpServer server,
             [Description("Device name")] string? deviceName,
@@ -1093,13 +1105,14 @@ namespace TiaPortalMcpServer
                     );
                 }
 
-                SetDeviceAppId(device, appId);
+                string resolvedAppId = appId ?? string.Empty;
+                SetDeviceAppId(device, resolvedAppId);
 
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
                         deviceName = deviceName,
-                        appId = appId,
+                        appId = resolvedAppId,
                         message = $"App ID set successfully on device '{deviceName}'"
                     })
                 );
@@ -1128,7 +1141,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Search the TIA Portal hardware catalog for devices and modules by article number, order number, product name, or partial match. Returns list of matching catalog entries with order numbers, descriptions, type identifiers, and versions. No prerequisites. Use this to discover valid order numbers before devices_create. Essential for finding correct hardware part numbers for device creation.")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Search the TIA Portal hardware catalog for devices and modules by article number, order number, product name, or partial match. Returns list of matching catalog entries with order numbers, descriptions, type identifiers, and versions. No prerequisites. Use this to discover valid order numbers before devices_create. Essential for finding correct hardware part numbers for device creation.")]
         public CallToolResult devices_search_catalog(
             [Description("Search term (device name, order number, or partial match)")] string searchTerm,
             [Description("Maximum number of results to return")] int maxResults = 50)

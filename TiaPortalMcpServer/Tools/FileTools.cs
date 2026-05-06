@@ -30,7 +30,7 @@ namespace TiaPortalMcpServer.Tools
         /// Reads a CSV file and returns structured data (rows with column headers as keys).
         /// Supports custom delimiters. Path must be within allowed roots for security.
         /// </summary>
-        [McpServerTool, Description("Read a CSV file and extract data as structured rows")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Read a CSV file and extract data as structured rows")]
         public CallToolResult files_read_csv(
             [Description("Absolute or relative path to CSV file")] string filePath,
             [Description("Column delimiter character (default: comma)")] string delimiter = ",")
@@ -54,10 +54,10 @@ namespace TiaPortalMcpServer.Tools
                     return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
-                            result.Error));
+                            result.Error ?? "Failed to read CSV file."));
                 }
 
-                var data = result.Data;
+                var data = result.Data ?? new List<Dictionary<string, string>>();
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
@@ -81,7 +81,7 @@ namespace TiaPortalMcpServer.Tools
         /// <summary>
         /// Lists all worksheet names in an Excel file.
         /// </summary>
-        [McpServerTool, Description("List all worksheet names in an Excel file")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("List all worksheet names in an Excel file")]
         public CallToolResult files_list_sheets(
             [Description("Absolute or relative path to Excel file (.xlsx or .xls)")] string filePath)
         {
@@ -95,10 +95,10 @@ namespace TiaPortalMcpServer.Tools
                     return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
-                            result.Error));
+                            result.Error ?? "Failed to list Excel sheets."));
                 }
 
-                var sheets = result.Data;
+                var sheets = result.Data ?? new List<string>();
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
@@ -121,7 +121,7 @@ namespace TiaPortalMcpServer.Tools
         /// Reads data from a specific worksheet in an Excel file.
         /// Returns structured data with headers from the first row.
         /// </summary>
-        [McpServerTool, Description("Read a worksheet from an Excel file and extract data as structured rows")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Read a worksheet from an Excel file and extract data as structured rows")]
         public CallToolResult files_read_excel(
             [Description("Absolute or relative path to Excel file (.xlsx or .xls)")] string filePath,
             [Description("Worksheet name to read from")] string sheetName)
@@ -144,10 +144,10 @@ namespace TiaPortalMcpServer.Tools
                     return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
-                            result.Error));
+                            result.Error ?? $"Failed to read Excel sheet '{sheetName}'."));
                 }
 
-                var data = result.Data;
+                var data = result.Data ?? new List<Dictionary<string, string>>();
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
@@ -172,7 +172,7 @@ namespace TiaPortalMcpServer.Tools
         /// Validates CSV file format and structure.
         /// Checks for consistent column count, valid headers, and syntax errors.
         /// </summary>
-        [McpServerTool, Description("Validate CSV file format and report any structural issues")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Validate CSV file format and report any structural issues")]
         public CallToolResult files_validate_format(
             [Description("Absolute or relative path to CSV file")] string filePath,
             [Description("Column delimiter character (default: comma)")] string delimiter = ",")
@@ -196,10 +196,17 @@ namespace TiaPortalMcpServer.Tools
                     return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
-                            result.Error));
+                            result.Error ?? "Failed to validate CSV format."));
                 }
 
                 var report = result.Data;
+                if (report == null)
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.TiaError,
+                            "CSV validation returned no report."));
+                }
                 return McpToolResults.From(
                     ToolResponse<object>.CreateSuccess(new
                     {
@@ -225,7 +232,7 @@ namespace TiaPortalMcpServer.Tools
         /// Gets file information without loading the entire file.
         /// Useful for checking file size, existence, and basic properties.
         /// </summary>
-        [McpServerTool, Description("Get basic file information (size, last modified, type)")]
+        [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = true), Description("Get basic file information (size, last modified, type)")]
         public CallToolResult files_get_info(
             [Description("Absolute or relative path to file")] string filePath)
         {
@@ -239,10 +246,17 @@ namespace TiaPortalMcpServer.Tools
                     return McpToolResults.From(
                         ToolResponse<object>.CreateError(
                             ErrorCodes.InvalidParameter,
-                            pathResult.Error));
+                            pathResult.Error ?? "Invalid file path."));
                 }
 
-                var fullPath = pathResult.Data;
+                string fullPath = pathResult.Data ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(fullPath))
+                {
+                    return McpToolResults.From(
+                        ToolResponse<object>.CreateError(
+                            ErrorCodes.InvalidParameter,
+                            "Resolved file path is empty."));
+                }
                 var fileInfo = new System.IO.FileInfo(fullPath);
 
                 return McpToolResults.From(

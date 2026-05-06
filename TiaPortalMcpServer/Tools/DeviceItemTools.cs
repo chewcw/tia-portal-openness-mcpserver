@@ -304,7 +304,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool(Name = "deviceitems_plug_move"), Description("Move a device item to a new position")]
+        [McpServerTool(Destructive = true, OpenWorld = true, Name = "deviceitems_plug_move"), Description("Move a device item to a new position")]
         public CallToolResult deviceitems_plug_move(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName,
@@ -397,7 +397,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool(Name = "deviceitems_copy"), Description("Copy a device item to a new position")]
+        [McpServerTool(Destructive = true, OpenWorld = true, Name = "deviceitems_copy"), Description("Copy a device item to a new position")]
         public CallToolResult deviceitems_copy(
             [Description("Device name")] string deviceName,
             [Description("Device item name to copy")] string sourceDeviceItemName,
@@ -490,7 +490,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool(Destructive = true, Name = "deviceitems_delete"), Description("Delete a device item from a device")]
+        [McpServerTool(Destructive = true, OpenWorld = true, Name = "deviceitems_delete"), Description("Delete a device item from a device")]
         public CallToolResult deviceitems_delete(
             [Description("Device name")] string deviceName,
             [Description("Device item name")] string deviceItemName,

@@ -17,7 +17,7 @@ namespace TiaPortalMcpServer
             _logger = logger;
         }
 
-        [McpServerTool, Description("Returns a greeting from TIA MCP Server")]
+        [McpServerTool(ReadOnly = true, Idempotent = true), Description("Returns a greeting from TIA MCP Server")]
         public CallToolResult hello_world()
         {
             try

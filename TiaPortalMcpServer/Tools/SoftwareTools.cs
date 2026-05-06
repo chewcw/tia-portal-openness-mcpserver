@@ -30,7 +30,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool(Destructive = true, Name = "software_add_block"), Description("Create a new PLC block (FB, FC, DB, OB) in a device's PLC software with specified name or number. Supports Organization Blocks, Function Blocks, Functions, and Data Blocks. Returns block metadata. Prerequisites: Project must be open, device must have PLC software, block name must be unique. Use this for programmatic block creation during project generation or template instantiation.")]
+        [McpServerTool(Destructive = true, OpenWorld = true, Name = "software_add_block"), Description("Create a new PLC block (FB, FC, DB, OB) in a device's PLC software with specified name or number. Supports Organization Blocks, Function Blocks, Functions, and Data Blocks. Returns block metadata. Prerequisites: Project must be open, device must have PLC software, block name must be unique. Use this for programmatic block creation during project generation or template instantiation.")]
         public CallToolResult software_add_block(
             [Description("Device name")] string deviceName,
             [Description("Block type (FB, FC, DB, OB)")] string blockType,

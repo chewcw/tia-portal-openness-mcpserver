@@ -29,7 +29,7 @@ namespace TiaPortalMcpServer
             _sessionManager = sessionManager;
         }
 
-        [McpServerTool, Description("Compile the entire TIA Portal project including all devices, PLCs, and HMI targets. Returns compilation state (success/error/warning). Prerequisites: Project must be open. Use this to validate the entire project and identify compilation errors across all project components. Note: Compilation can be time-consuming for large projects.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Compile the entire TIA Portal project including all devices, PLCs, and HMI targets. Returns compilation state (success/error/warning). Prerequisites: Project must be open. Use this to validate the entire project and identify compilation errors across all project components. Note: Compilation can be time-consuming for large projects.")]
         public CallToolResult compilation_project()
         {
             _logger.LogInformation("compilation_project called");
@@ -92,7 +92,7 @@ namespace TiaPortalMcpServer
             }
         }
 
-        [McpServerTool, Description("Compile PLC software for a specific device. Returns compilation state and identifies device-specific errors. Prerequisites: Project must be open, device must have PLC software. Use this for targeted compilation when working on a single device's logic. Faster than full project compilation for iterative development.")]
+        [McpServerTool(Destructive = true, OpenWorld = true), Description("Compile PLC software for a specific device. Returns compilation state and identifies device-specific errors. Prerequisites: Project must be open, device must have PLC software. Use this for targeted compilation when working on a single device's logic. Faster than full project compilation for iterative development.")]
         public CallToolResult compilation_software([Description("Device name")] string deviceName)
         {
             _logger.LogInformation("compilation_software called with deviceName='{DeviceName}'", deviceName);
