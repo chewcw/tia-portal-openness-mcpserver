@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using TiaPortalMcpServer.Services;
 using TiaPortalMcpServer.Extensions;
@@ -10,7 +11,7 @@ using Serilog.Events;
 namespace TiaPortalMcpServer.Tests
 {
     [Trait("Category", "Unit")]
-    public class ToolsDiTests
+    public class ToolsDiTests : TestBase
     {
         [Fact]
         public void Tool_types_are_resolvable_from_service_provider()
@@ -44,8 +45,10 @@ namespace TiaPortalMcpServer.Tests
                 // tools must be resolvable from DI and usable
                 var testTools = sp.GetService<TiaPortalMcpServer.TestTools>();
                 Assert.NotNull(testTools);
-                var greeting = testTools.hello_world();
-                Assert.Equal("Hello from TIA MCP Server!", greeting);
+                var result = testTools.hello_world();
+                var response = ParseToolResult<JObject>(result);
+                Assert.True(response.Success);
+                Assert.Equal("Hello from TIA MCP Server!", response.Data["message"]?.ToString());
             }
             finally
             {
