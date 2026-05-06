@@ -1,4 +1,4 @@
-import { confirm, input, select } from "@inquirer/prompts";
+import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import { resolveSkillsPath } from "../services/agentPathResolver.js";
 import { AVAILABLE_SKILLS, COMMON_SKILLS_REPO } from "../constants.js";
 
@@ -12,6 +12,9 @@ export interface InstallPromptInput {
 export interface InstallPromptResult {
   installDir: string;
   serverVersion?: string;
+  installCompanionSkills: boolean;
+  companionSkillPaths: string[];
+  companionSkillsEnv: "global" | "local";
 }
 
 const AGENT_TYPES = ["opencode", "claude", "cursor", "generic"] as const;
@@ -28,6 +31,44 @@ async function promptAgentType(detected: AgentType): Promise<AgentType> {
 }
 
 const CUSTOM_VERSION_MARKER = "__custom__";
+
+const SKILL_PATH_CHOICES = [
+  { name: ".agents/skills", value: ".agents/skills", checked: true },
+  { name: ".claude/skills", value: ".claude/skills" },
+  { name: ".codex/skills", value: ".codex/skills" },
+  { name: ".cursor/skills", value: ".cursor/skills" },
+  { name: ".copilot/skills", value: ".copilot/skills" },
+  { name: ".github/skills", value: ".github/skills" },
+  { name: ".windsurf/skills", value: ".windsurf/skills" },
+  { name: ".antigravity/skills", value: ".antigravity/skills" },
+];
+
+async function promptInstallCompanionSkills(): Promise<boolean> {
+  return confirm({
+    message: "Install companion skills along with the MCP server?",
+    default: true,
+  });
+}
+
+async function promptCompanionSkillPaths(): Promise<string[]> {
+  return checkbox<string>({
+    message: "Select companion skill installation locations:",
+    choices: SKILL_PATH_CHOICES,
+    validate: (value) =>
+      value.length > 0 || "Select at least one installation location",
+  });
+}
+
+async function promptCompanionSkillsEnvironment(): Promise<"global" | "local"> {
+  return select<"global" | "local">({
+    message: "Install selected companion skills in:",
+    choices: [
+      { name: "Global environment (user home directory)", value: "global" },
+      { name: "Local environment (current working directory)", value: "local" },
+    ],
+    default: "local",
+  });
+}
 
 async function promptServerVersion(
   latestTag?: string,
@@ -69,8 +110,19 @@ export async function collectInstallPromptResult(
     default: installDirDefault,
   });
 
+  const installCompanionSkills = await promptInstallCompanionSkills();
+  const companionSkillPaths = installCompanionSkills
+    ? await promptCompanionSkillPaths()
+    : [];
+  const companionSkillsEnv = installCompanionSkills
+    ? await promptCompanionSkillsEnvironment()
+    : "local";
+
   return {
     installDir: selectedInstallDir,
     ...(serverVersion ? { serverVersion } : {}),
+    installCompanionSkills,
+    companionSkillPaths,
+    companionSkillsEnv,
   };
 }

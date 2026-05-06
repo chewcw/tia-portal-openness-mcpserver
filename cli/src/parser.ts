@@ -13,7 +13,7 @@ function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOption
 function parseValueFlag(
   args: string[],
   index: number,
-  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skills" | "agentType">,
+  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skills" | "agentType" | "companionSkills" | "companionSkillsPath" | "companionSkillsEnv">,
   options: GlobalOptions
 ): number {
   const value = args[index + 1];
@@ -21,7 +21,15 @@ function parseValueFlag(
     throw new Error(`Missing value for flag ${args[index]}`);
   }
 
-  options[key] = value;
+  if (key === "companionSkills") {
+    options[key] = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean) as never;
+  } else {
+    options[key] = value as never;
+  }
+
   return index + 1;
 }
 
@@ -67,6 +75,21 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
     if (token === "--agent-type") {
       i = parseValueFlag(argv, i, "agentType", options);
+      continue;
+    }
+
+    if (token === "--companion-skills") {
+      i = parseValueFlag(argv, i, "companionSkills", options);
+      continue;
+    }
+
+    if (token === "--companion-skills-path") {
+      i = parseValueFlag(argv, i, "companionSkillsPath", options);
+      continue;
+    }
+
+    if (token === "--companion-skills-env") {
+      i = parseValueFlag(argv, i, "companionSkillsEnv", options);
       continue;
     }
 

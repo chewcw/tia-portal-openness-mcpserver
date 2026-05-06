@@ -6,6 +6,7 @@ import { extractZipToStaging } from "../services/extract.js";
 import { installExtractedContent } from "../services/installTransaction.js";
 import { getRepositoryFromEnv, ReleaseClient } from "../services/releases.js";
 import { collectInstallPromptResult } from "../ui/prompts.js";
+import { installCompanionSkills } from "../services/companionSkillsInstaller.js";
 
 function printInstallHelp(): void {
   process.stdout.write(
@@ -21,6 +22,9 @@ function printInstallHelp(): void {
       "Options:",
       "  --server-version <tag>  Specific version to install",
       "  --install-dir <path>    Installation directory",
+      "  --companion-skills <name[,name...]>  Companion skills to install",
+      "  --companion-skills-path <path>      Companion skill installation location",
+      "  --companion-skills-env <global|local>  Companion skill install environment",
       "  --help                  Show help",
       "  --version               Show version",
     ].join("\n") + "\n"
@@ -56,6 +60,17 @@ export async function installCommand(context: CommandContext): Promise<number> {
     throw new Error("Server version is required. Use --server-version or specify in prompt.");
   }
 
+  if (promptResult.installCompanionSkills) {
+    process.stdout.write("Installing companion skills...\n");
+    await installCompanionSkills({
+      skillPaths: promptResult.companionSkillPaths,
+      environment: promptResult.companionSkillsEnv,
+    });
+    process.stdout.write("Companion skills installed successfully.\n");
+  } else {
+    process.stdout.write("Skipping companion skills installation.\n");
+  }
+
   const version = promptResult.serverVersion;
   const normalizedVersion = version.startsWith('v') ? version : `v${version}`;
 
@@ -67,9 +82,13 @@ export async function installCommand(context: CommandContext): Promise<number> {
 
   const installRoot = promptResult.installDir;
 
+  process.stdout.write("Downloading MCP server asset...\n");
   const downloaded = await downloadAsset(asset, path.join(installRoot, "downloads"));
+  process.stdout.write("Extracting MCP server asset...\n");
   const extracted = await extractZipToStaging(downloaded.filePath, path.join(installRoot, "tmp"));
+  process.stdout.write("Installing MCP server...\n");
   const transaction = await installExtractedContent(extracted.extractedPath, installRoot);
+  process.stdout.write("MCP server installation complete.\n");
 
   const executablePath = path.join(transaction.activePath, "TiaPortalMcpServer.exe");
 

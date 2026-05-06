@@ -17,4 +17,8 @@ export const AVAILABLE_SKILLS: SkillDefinition[] = [
   },
 ];
 
+export const DEFAULT_COMPANION_SKILL_PATHS = [
+  ".agents/skills",
+];
+
 export const COMMON_SKILLS_REPO = 'https://github.com/chewcw/agent-skills';

@@ -5,6 +5,9 @@ export interface GlobalOptions {
   installDir?: string;
   skills?: string;
   agentType?: string;
+  companionSkills?: string[];
+  companionSkillsPath?: string;
+  companionSkillsEnv?: "global" | "local";
 }
 
 export interface ParsedCommand {

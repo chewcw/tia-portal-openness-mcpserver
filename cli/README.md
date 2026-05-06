@@ -31,6 +31,8 @@ tia-portal-openness-mcpserver install --server-version v1.0.0
 tia-portal-openness-mcpserver install --install-dir /custom/path
 ```
 
+The install workflow now prompts to install companion skills alongside the MCP server. By default it offers `.agents/skills` as the selected install location and allows choosing a global or local environment.
+
 ### `skills`
 
 Manage companion skills.
@@ -54,6 +56,9 @@ Supported agent types: `opencode`, `claude`, `cursor`, `generic`.
 | --- | --- |
 | `--server-version <tag>` | Explicit server release tag |
 | `--install-dir <path>` | Override default install root |
+| `--companion-skills <name[,name...]>` | Install companion skills to selected locations |
+| `--companion-skills-path <path>` | Companion skill installation location |
+| `--companion-skills-env <global|local>` | Install companion skills into global or local environment |
 | `--skills <name[,name...]>` | Comma-separated list of skills to install |
 | `--agent-type <type>` | Target agent type for skills: `opencode`, `claude`, `cursor`, or `generic` |
 | `--help` | Show help |
