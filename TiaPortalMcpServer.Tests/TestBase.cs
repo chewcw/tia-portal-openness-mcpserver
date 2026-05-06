@@ -3,6 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Siemens.Collaboration.Net;
+using ModelContextProtocol.Protocol;
+using Newtonsoft.Json;
+using TiaPortalMcpServer.Models;
 using TiaPortalMcpServer.Services;
 using TiaPortalMcpServer.Extensions;
 using Xunit;
@@ -15,6 +18,13 @@ namespace TiaPortalMcpServer.Tests
     {
         protected IServiceProvider ServiceProvider { get; private set; }
         protected Microsoft.Extensions.Logging.ILogger Logger { get; private set; }
+
+        protected static ToolResponse<T> ParseToolResult<T>(CallToolResult result)
+        {
+            var json = result.StructuredContent.ToString();
+            return JsonConvert.DeserializeObject<ToolResponse<T>>(json)
+                ?? throw new InvalidOperationException("Failed to deserialize tool result.");
+        }
 
         protected TestBase()
         {
