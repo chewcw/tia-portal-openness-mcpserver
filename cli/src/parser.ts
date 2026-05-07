@@ -2,7 +2,6 @@ import { GlobalOptions, ParsedCommand } from "./types.js";
 
 const KNOWN_COMMANDS = new Set([
   "install",
-  "skills",
 ]);
 
 function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOptions, options: GlobalOptions): number {
@@ -13,7 +12,7 @@ function parseBooleanFlag(args: string[], index: number, key: keyof GlobalOption
 function parseValueFlag(
   args: string[],
   index: number,
-  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "skills" | "agentType" | "companionSkills" | "companionSkillsPath" | "companionSkillsEnv">,
+  key: keyof Pick<GlobalOptions, "serverVersion" | "installDir" | "agentType" | "companionSkills" | "companionSkillsPath" | "companionSkillsEnv">,
   options: GlobalOptions
 ): number {
   const value = args[index + 1];
@@ -65,11 +64,6 @@ export function parseArgs(argv: string[]): ParsedCommand {
 
     if (token === "--install-dir") {
       i = parseValueFlag(argv, i, "installDir", options);
-      continue;
-    }
-
-    if (token === "--skills") {
-      i = parseValueFlag(argv, i, "skills", options);
       continue;
     }
 
