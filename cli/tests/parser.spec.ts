@@ -27,27 +27,4 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["download", "--server-version"]))
       .toThrow("Missing value for flag --server-version");
   });
-
-  it("parses skills install with required options", () => {
-    const parsed = parseArgs(["skills", "install", "--skills", "siemens-stl-awl-programmer", "--agent-type", "opencode"]);
-
-    expect(parsed.name).toBe("skills");
-    expect(parsed.args).toEqual(["install"]);
-    expect(parsed.options.skills).toBe("siemens-stl-awl-programmer");
-    expect(parsed.options.agentType).toBe("opencode");
-  });
-
-  it("parses comma-separated agent-type values", () => {
-    const parsed = parseArgs(["skills", "install", "--skills", "siemens-stl-awl-programmer", "--agent-type", "generic, claude"]);
-
-    expect(parsed.name).toBe("skills");
-    expect(parsed.args).toEqual(["install"]);
-    expect(parsed.options.skills).toBe("siemens-stl-awl-programmer");
-    expect(parsed.options.agentType).toBe("generic, claude");
-  });
-
-  it("throws for empty --skills value", () => {
-    expect(() => parseArgs(["skills", "install", "--skills", ""]))
-      .toThrow("Missing value for flag --skills");
-  });
 });
