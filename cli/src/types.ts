@@ -3,7 +3,6 @@ export interface GlobalOptions {
   version: boolean;
   serverVersion?: string;
   installDir?: string;
-  skills?: string;
   agentType?: string;
   companionSkills?: string[];
   companionSkillsPath?: string;
