@@ -71,3 +71,7 @@ yarn.lock
 
 .agents/
 local-artifacts/
+
+docs/
+.github/
+!.github/workflows
