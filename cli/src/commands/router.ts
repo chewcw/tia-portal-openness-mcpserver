@@ -1,10 +1,8 @@
 import { installCommand } from "./install.js";
-import { skillsCommand } from "./skills.js";
 import { CommandContext, CommandHandler } from "../types.js";
 
 const COMMANDS: Record<string, CommandHandler> = {
   install: installCommand,
-  skills: skillsCommand,
 };
 
 export async function dispatchCommand(context: CommandContext): Promise<number> {
