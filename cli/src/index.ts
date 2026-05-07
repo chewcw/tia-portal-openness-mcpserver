@@ -36,7 +36,6 @@ function printHelp(): void {
       "",
       "Commands:",
       "  install      Install latest or selected server release",
-      "  skills       Manage companion skills",
       "",
       "Global options:",
       "  --help       Show this help",
