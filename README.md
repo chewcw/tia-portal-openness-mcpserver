@@ -79,7 +79,6 @@ The companion CLI is in `cli/` and is intended for npm/`npx` workflows.
 
 ```bash
 npx @chewcw/tia-portal-openness-mcpserver install --server-version v1.0.0
-npx @chewcw/tia-portal-openness-mcpserver skills install --skills siemens-awl-stl-programmer --agent-type opencode
 ```
 
 Environment variables used by the CLI:

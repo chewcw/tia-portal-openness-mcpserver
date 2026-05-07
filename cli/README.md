@@ -33,23 +33,6 @@ tia-portal-openness-mcpserver install --install-dir /custom/path
 
 The install workflow now prompts to install companion skills alongside the MCP server. By default it offers `.agents/skills` as the selected install location and allows choosing a global or local environment.
 
-### `skills`
-
-Manage companion skills.
-
-```bash
-tia-portal-openness-mcpserver skills install --skills <name[,name...]> --agent-type <type>
-```
-
-Available skills:
-
-| Skill | Description |
-| --- | --- |
-| `siemens-awl-stl-programmer` | Generate Siemens S7 STL/AWL PLC programs |
-| `siemens-tia-portal-integrator` | Orchestrate TIA Portal data-driven workflows |
-
-Supported agent types: `opencode`, `claude`, `cursor`, `generic`.
-
 ## Global Options
 
 | Option | Description |
@@ -59,8 +42,6 @@ Supported agent types: `opencode`, `claude`, `cursor`, `generic`.
 | `--companion-skills <name[,name...]>` | Install companion skills to selected locations |
 | `--companion-skills-path <path>` | Companion skill installation location |
 | `--companion-skills-env <global|local>` | Install companion skills into global or local environment |
-| `--skills <name[,name...]>` | Comma-separated list of skills to install |
-| `--agent-type <type>` | Target agent type for skills: `opencode`, `claude`, `cursor`, or `generic` |
 | `--help` | Show help |
 | `--version` | Show CLI version |
 
