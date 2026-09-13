@@ -1,0 +1,44 @@
+ORGANIZATION_BLOCK "OB1"
+TITLE = Main Program Cycle
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+VAR_TEMP
+      RawAnalog   : INT;
+      ScaledValue : REAL;
+      StartPB     : BOOL;
+      StopPB      : BOOL;
+      Overload    : BOOL;
+      MotorOutput : BOOL;
+      AlarmOutput : BOOL;
+END_VAR
+
+BEGIN
+
+NETWORK
+TITLE = Read Analog Input
+// Read raw analog value from peripheral input word
+      L     PIW256;            // Peripheral Input Word
+      T     #RawAnalog;
+
+NETWORK
+TITLE = Scale Analog Input
+      CALL "Analog Scaling"
+      (  IN                          := #RawAnalog ,
+         HI_LIM                      := 100.0 ,
+         LO_LIM                      := 0.0 ,
+         OUT                         := #ScaledValue
+      );
+
+NETWORK
+TITLE = Call Motor Control FB
+      CALL "Motor Control", "Motor Control_DB"
+      (  StartPB                     := #StartPB ,
+         StopPB                      := #StopPB ,
+         Overload                    := #Overload ,
+         Temperature                 := #ScaledValue ,
+         MotorOutput                 := #MotorOutput ,
+         AlarmOutput                 := #AlarmOutput
+      );
+
+END_ORGANIZATION_BLOCK

@@ -1,0 +1,49 @@
+﻿FUNCTION "Analog Scaling" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT
+      IN : INT;
+      HI_LIM : REAL;
+      LO_LIM : REAL;
+   END_VAR
+
+   VAR_OUTPUT
+      OUT : REAL;
+   END_VAR
+
+   VAR_TEMP
+      TempReal : REAL;
+   END_VAR
+
+
+BEGIN
+NETWORK
+TITLE = Convert INT to REAL
+//This is the description of network
+      L #IN;
+      ITD;
+      DTR;
+      T #TempReal;
+
+NETWORK
+TITLE = Normalize to 0-27648
+//This is the description of network
+      L #TempReal;
+      L 27648.0;
+      /R;
+      T #TempReal;
+
+NETWORK
+TITLE = Scale to HI_LIM-LO_LIM
+//This is the description of network
+      L #HI_LIM;
+      L #LO_LIM;
+      -R;
+      L #TempReal;
+      *R;
+      L #LO_LIM;
+      +R;
+      T #OUT;
+
+END_FUNCTION
+

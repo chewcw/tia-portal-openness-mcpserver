@@ -1,0 +1,13 @@
+DATA_BLOCK "Data_block_1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR
+      TagName1 : BOOL;
+      TagName2 : BYTE;
+      Motor1 { S7_SetPoint := 'False'} : "UDT_MOTOR";
+   END_VAR
+
+BEGIN
+
+END_DATA_BLOCK

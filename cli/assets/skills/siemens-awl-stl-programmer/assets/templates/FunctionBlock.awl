@@ -1,0 +1,78 @@
+FUNCTION_BLOCK "Motor Control"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+VAR_INPUT
+    StartPB      : BOOL ;
+    StopPB       : BOOL ;
+    Overload     : BOOL ;
+    Temperature  : REAL ;
+END_VAR
+
+VAR_OUTPUT
+    MotorOutput  : BOOL ;
+    AlarmOutput  : BOOL ;
+END_VAR
+
+VAR
+    StartEdge    : BOOL ;
+    RunLatch     : BOOL ;
+    HighTemp     : BOOL ;
+    StartDelay   : TON ;
+END_VAR
+
+BEGIN
+
+NETWORK
+TITLE = Rising Edge Detection for Start
+// This network detects the rising edge of the StartPB to initiate the start sequence
+      A     #StartPB;
+      FP    #StartEdge;
+      =     #StartEdge;
+
+NETWORK
+TITLE = Start Latch Logic
+// The motor will start if the StartPB is pressed, there is no stop signal, and there are no overload conditions
+      A     #StartEdge;
+      AN    #StopPB;
+      AN    #Overload;
+      S     #RunLatch;
+
+NETWORK
+TITLE = Stop and Overload Logic
+// The motor will stop if the StopPB is pressed or if there is an overload condition
+      A     #StopPB;
+      R     #RunLatch;
+
+      A     #Overload;
+      R     #RunLatch;
+
+NETWORK
+TITLE = Start Delay Timer (3 seconds)
+// This network implements a timer that starts when the motor is latched to run, introducing a delay before the motor output is activated
+      A     #RunLatch;
+      L     S5T#3S;
+      T    #StartDelay.PT;
+
+NETWORK
+TITLE = Motor Output Logic
+// This is where the motor output is activated after the start delay has elapsed and there are no overload conditions
+      A     #StartDelay.Q;
+      =     #MotorOutput;
+
+NETWORK
+TITLE = High Temperature Alarm (>80 deg)
+// This checks if the temperature exceeds 80 degrees and sets the HighTemp flag accordingly
+      L     #Temperature;
+      L     80.0;
+      >R;
+      =     #HighTemp;
+
+NETWORK
+TITLE = Alarm Logic
+// The alarm output is activated if there is an overload condition or if the temperature is too high
+      A     #HighTemp;
+      O     #Overload;
+      =     #AlarmOutput;
+
+END_FUNCTION_BLOCK
