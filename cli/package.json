@@ -10,7 +10,8 @@
     "tia-mcp": "dist/index.js"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "assets/skills/**"
   ],
   "publishConfig": {
     "access": "public"

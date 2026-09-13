@@ -1,6 +1,6 @@
 import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import { resolveSkillsPath } from "../services/agentPathResolver.js";
-import { AVAILABLE_SKILLS, COMMON_SKILLS_REPO } from "../constants.js";
+import { AVAILABLE_SKILLS } from "../constants.js";
 
 export interface InstallPromptInput {
   installDirDefault: string;
