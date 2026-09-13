@@ -1,6 +1,7 @@
-import path from "node:path";
+import path, { dirname } from "node:path";
 import fs from "node:fs";
 import { AVAILABLE_SKILLS, DEFAULT_COMPANION_SKILL_PATHS } from "../constants.js";
+import { fileURLToPath } from "node:url";
 
 export interface CompanionSkillsInstallOptions {
   skillPaths?: string[];
@@ -21,6 +22,8 @@ export async function installCompanionSkills(
     return;
   }
 
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
   const sourceBase = path.join(__dirname, "../../assets/skills");
 
   for (const location of skillPaths) {
